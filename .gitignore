@@ -1,0 +1,62 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+.next/dev/cache/turbopack/v16.2.10/00000019.meta
+.next/dev/cache/turbopack/v16.2.10/00000017.meta
+.next/dev/cache/turbopack/v16.2.10/00000016.meta
+.next/dev/cache/turbopack/v16.2.10/00000015.sst
+.next/dev/cache/turbopack/v16.2.10/00000014.sst
+.next/dev/cache/turbopack/v16.2.10/00000012.sst
+.next/dev/cache/turbopack/v16.2.10/00000008.meta
+.next/dev/cache/next-devtools-config.json
+.next/dev/cache/.rscinfo
+.next/dev/build/package.json
+.next/dev/build/chunks/\[turbopack\]_runtime.js.map
+.next/dev/build/chunks/\[turbopack\]_runtime.js
+.next/dev/build/chunks/\[turbopack-node\]_transforms_webpack-loaders_ts_1nw9y6m._.js.map
+.next/dev/build/chunks/\[turbopack-node\]_transforms_webpack-loaders_ts_1nw9y6m._.js
+.next/dev/build/chunks/\[root-of-the-server\]__1nvwxt6._.js.map
+.next/dev/build/chunks/\[root-of-the-server\]__1nvwxt6._.js
+.next/dev/build/chunks/\[root-of-the-server\]__0x8m--0._.js.map
+.next/dev/build/chunks/\[root-of-the-server\]__0x8m--0._.js
+.next/dev/build/cf208e1b0e4c4caf.js.map
+.next/dev/build/cf208e1b0e4c4caf.js
+.next/dev/build-manifest.json

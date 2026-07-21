@@ -115,7 +115,7 @@ export default function EditarCandidato({ params }) {
 
   if (loadingAuth || loadingData) {
     return (
-      <main className="login-main" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <main className="center-container" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
         <p className="login-text" style={{ fontFamily: "'Space Mono', monospace" }}>
           Buscando registro do candidato...
         </p>

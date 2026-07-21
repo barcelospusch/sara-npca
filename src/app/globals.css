@@ -3,7 +3,7 @@
 :root {
   --primary: #cc4331;
   --secondary: #ffef86;
-  --success: #5bc65e;
+  --green: #5bc65e;
   --blue: #1e90ff;
   --white: #fff;
   --black: #000;
@@ -54,6 +54,15 @@ a.btn {
     text-align: center;
     justify-content: center;
   }
+  &.withicon {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  &.secondary {
+    background-color: var(--secondary);
+    color: var(--black);
+  }
 }
 
 /* Navigation */
@@ -78,7 +87,7 @@ nav div span.divider {
 }
 
 /* Footer */
-footer{
+footer {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -87,6 +96,10 @@ footer{
   border-top: 2px solid var(--light-gray);
 }
 
+hr {
+  margin-block: 32px;
+  border-color: var(--dark-gray);
+}
 
 /* Main */
 main {
@@ -100,12 +113,22 @@ main header {
   margin-bottom: 20px;
   gap: 20px;
 }
-main header div {
+main header div.box {
   display: flex;
   align-items: center;
   flex-direction: column;
-  background-color: var(--secondary);
+  border: 2px solid var(--black);
   padding: 10px;
+  &.box-review {
+    background-color: var(--secondary);
+  }
+  &.box-preliminar {
+    background-color: var(--blue);
+    color: var(--white);
+  }
+  &.box-provisional {
+    background-color: var(--green);
+  }
 }
 
 /* Container da Tabela */
@@ -116,8 +139,8 @@ main div.container {
 
 .table-responsive {
   width: 100%;
-  overflow-x: auto; /* Garante que seja responsivo em telas menores */
-  border: 2px solid var(--black); /* Borda forte estilo brutalista */
+  overflow-x: auto;
+  border: 2px solid var(--black);
 }
 
 /* Estrutura da Tabela */
@@ -156,7 +179,7 @@ table.table tbody tr:nth-child(even) {
 
 /* Efeito de Hover na linha */
 table.table tbody tr:hover {
-  background-color: rgba(255, 239, 134, 0.2); /* Tom bem suave do --secondary */
+  background-color: rgba(255, 239, 134, 0.2);
 }
 
 table.table td {
@@ -176,7 +199,6 @@ table.table td span {
   border: 1px solid var(--black);
 }
 
-/* Cores específicas baseadas nas classes que o JS gera dinamicamente */
 table.table td span.status-em-analise,
 table.table td span.status-em-analise {
   background-color: var(--secondary);
@@ -189,16 +211,56 @@ table.table td span.status-preliminar {
 }
 
 table.table td span.status-provisorio {
-  background-color: var(--success);
+  background-color: var(--green);
   color: var(--white);
 }
 
+table.table td div.withbtn-field {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  a {
+    text-decoration: 2px underline var(--primary);
+    font-weight: bold;
+  }
+}
+
+table.table td div.container-count-badge {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+table.table td div.container-count-badge p.count-badge {
+  border-width: 2px;
+  border-style: solid;
+  font-weight: bold;
+  padding: 2px 8px;
+  margin: 0;
+  &.count-badge-total {
+    border-color: var(--black);
+  }
+  &.count-badge-review {
+    border-color: var(--secondary);
+    background-color: var(--secondary);
+  }
+  &.count-badge-premilinar {
+    border-color: var(--blue);
+    background-color: var(--blue);
+    color: var(--white);
+  }
+  &.count-badge-provisional {
+    border-color: var(--green);
+    background-color: var(--green);
+  }
+}
+
 /* Container e Alinhamento Central */
-.login-main {
+.center-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 50px);
+  min-height: calc(100vh - 100px);
 }
 
 /* Caixa de Login Brutalistas */
@@ -209,6 +271,10 @@ table.table td span.status-provisorio {
   border: 2px solid var(--black);
   padding: 30px;
   box-shadow: 4px 4px 0px var(--black);
+}
+.login-box h2 {
+  text-align: center;
+  font-style: italic;
 }
 
 .login-text {
@@ -304,4 +370,12 @@ table.table td span.status-provisorio {
   padding: 10px;
   text-align: center;
   margin-block: 4px;
+  font-size: 20px;
+}
+
+.danger-zone {
+  h3 {
+    text-align: center;
+    margin-bottom: 10px;
+  }
 }

@@ -13,12 +13,10 @@ export default function Home() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
 
-  // 1. Escuta o estado do Firebase Auth e valida a role consultando a propriedade no DB
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          // Consulta o nó correspondente do usuário no Database
           const userRef = ref(database, `usuarios/${user.uid}`);
           const snapshot = await get(userRef);
 
@@ -43,7 +41,6 @@ export default function Home() {
     return () => unsubscribeAuth();
   }, []);
 
-  // 2. Escuta em tempo real o nó 'candidatos' no Realtime Database
   useEffect(() => {
     const candidatosRef = ref(database, "candidatos");
 
@@ -86,7 +83,7 @@ export default function Home() {
   if (loadingAuth || loadingData) {
     return (
       <main
-        className="login-main"
+        className="center-container"
         style={{
           display: "flex",
           justifyContent: "center",
@@ -106,21 +103,21 @@ export default function Home() {
   return (
     <main>
       <header>
-        <div>
+        <div className="box box-total">
           <b>{totalCandidatos}</b>
-          <p>Total de candidatos</p>
+          <small>Total de candidatos</small>
         </div>
-        <div>
+        <div className="box box-review">
           <b>{emAnalise}</b>
-          <p>Em análise</p>
+          <small>Em análise</small>
         </div>
-        <div style={{ backgroundColor: "var(--blue)" }}>
+        <div className="box box-preliminar">
           <b>{preliminares}</b>
-          <p>Preliminares</p>
+          <small>Preliminares</small>
         </div>
-        <div style={{ backgroundColor: "var(--success)" }}>
+        <div className="box box-provisional">
           <b>{provisorios}</b>
-          <p>Provisórios</p>
+          <small>Provisórios</small>
         </div>
       </header>
 
@@ -136,7 +133,6 @@ export default function Home() {
                 <th>PS</th>
                 <th>Observador</th>
                 <th>Status</th>
-                {isAdmin && <th>Gerenciar</th>}
               </tr>
             </thead>
             <tbody>
@@ -156,7 +152,21 @@ export default function Home() {
               ) : (
                 list.map((item, index) => (
                   <tr key={item.code || index}>
-                    <td>{item.code}</td>
+                    <td>
+                      <div className="withbtn-field">
+                        {item.code}
+                        {isAdmin && (
+                      <td>
+                        <Link
+                          href={`/admin/candidatos/${item.code}`}
+                          className="btn icon"
+                        >
+                          <GearSixIcon />
+                        </Link>
+                      </td>
+                    )}
+                      </div>
+                    </td>
                     <td>{item.set}</td>
                     <td>{item.date}</td>
                     <td>{item.quadrant}</td>
@@ -177,16 +187,6 @@ export default function Home() {
                         {item.status}
                       </span>
                     </td>
-                    {isAdmin && (
-                      <td>
-                        <Link
-                          href={`/admin/candidatos/${item.code}`}
-                          className="btn icon"
-                        >
-                          <GearSixIcon />
-                        </Link>
-                      </td>
-                    )}
                   </tr>
                 ))
               )}

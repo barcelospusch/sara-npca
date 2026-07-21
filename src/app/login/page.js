@@ -154,8 +154,7 @@ export default function Login() {
 
   return (
     <main>
-      <Toaster position="top-right" reverseOrder={false} />
-      <div className="login-main">
+      <div className="center-container">
         <div className="login-box">
           {showEmailConfirmation ? (
             <form

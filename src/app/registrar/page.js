@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { ref, runTransaction, get } from "firebase/database";
+import { auth, database } from "@/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { database, auth } from "@/firebase";
-import toast, { Toaster } from "react-hot-toast";
+import { get, ref, runTransaction } from "firebase/database";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 export default function RegistrarCandidato() {
   const [set, setSet] = useState("");
@@ -13,25 +13,22 @@ export default function RegistrarCandidato() {
   const [ps, setPs] = useState("PS1");
   const [observer, setObserver] = useState("");
   const [observerUid, setObserverUid] = useState("");
-  const [nextCode, setNextCode] = useState("NPC...."); // Estado para o código em tempo real
+  const [nextCode, setNextCode] = useState("NPC....");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // 1. Monitora o usuário logado e busca o nome salvo no Realtime Database
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setObserverUid(user.uid);
         
         try {
-          // Acessa o nó que salvamos na página de login
           const userDbRef = ref(database, `usuarios/${user.uid}`);
           const snapshot = await get(userDbRef);
           
           if (snapshot.exists() && snapshot.val().name) {
             setObserver(snapshot.val().name);
           } else {
-            // Fallback caso o nó ainda não tenha o campo nome por algum motivo
             setObserver(user.displayName || user.email || "Usuário Autenticado");
           }
         } catch (error) {
@@ -47,7 +44,6 @@ export default function RegistrarCandidato() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Busca o próximo código disponível no banco de dados assim que a página carrega
   useEffect(() => {
     const fetchNextCode = async () => {
       try {
@@ -130,12 +126,10 @@ export default function RegistrarCandidato() {
   };
 
   return (
-    <main className="login-main">
-      <Toaster position="top-right" reverseOrder={false} />
+    <main className="center-container">
       <div className="login-box">
         <h2>Registrar Candidato</h2>
         
-        {/* Banner com o código gerado em tempo real na tela */}
         <div className="code-highlight-banner">
           <strong>{nextCode}</strong>
         </div>

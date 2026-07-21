@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { onAuthStateChanged } from "firebase/auth";
-import { ref, onValue, get } from "firebase/database";
 import { auth, database } from "@/firebase";
-import { GearSixIcon } from "@phosphor-icons/react";
+import { CopyIcon } from "@phosphor-icons/react";
+import { onAuthStateChanged } from "firebase/auth";
+import { get, onValue, ref } from "firebase/database";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 export default function ListaMembros() {
@@ -15,7 +15,6 @@ export default function ListaMembros() {
   const [loadingData, setLoadingData] = useState(true);
   const router = useRouter();
 
-  // 1. Validação de Segurança: Garante que apenas administradores acessem a página
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -24,7 +23,9 @@ export default function ListaMembros() {
           const snapshot = await get(userRef);
 
           if (!snapshot.exists() || snapshot.val().admin !== true) {
-            toast.error("Acesso negado. Você não possui permissão de administrador.");
+            toast.error(
+              "Acesso negado. Você não possui permissão de administrador.",
+            );
             router.push("/");
           } else {
             setLoadingAuth(false);
@@ -43,65 +44,106 @@ export default function ListaMembros() {
     return () => unsubscribeAuth();
   }, [router]);
 
-  // 2. Sincronização em tempo real de Usuários e contagem de Candidatos
   useEffect(() => {
     if (loadingAuth) return;
 
     const usuariosRef = ref(database, "usuarios");
     const candidatosRef = ref(database, "candidatos");
 
-    // Escuta alterações nos usuários
-    const unsubscribeUsuarios = onValue(usuariosRef, (usuariosSnapshot) => {
-      // Escuta alterações nos candidatos para cruzar as contagens simultaneamente
-      onValue(candidatosRef, (candidatosSnapshot) => {
-        
-        if (usuariosSnapshot.exists()) {
-          const dadosUsuarios = usuariosSnapshot.val();
-          const dadosCandidatos = candidatosSnapshot.exists() ? candidatosSnapshot.val() : {};
+    // Escuta alterações na coleção de usuários
+    const unsubscribeUsuarios = onValue(
+      usuariosRef,
+      (usuariosSnapshot) => {
+        // Escuta alterações na coleção de candidatos
+        onValue(
+          candidatosRef,
+          (candidatosSnapshot) => {
+            if (usuariosSnapshot.exists()) {
+              const dadosUsuarios = usuariosSnapshot.val();
+              const dadosCandidatos = candidatosSnapshot.exists()
+                ? candidatosSnapshot.val()
+                : {};
 
-          // Transforma o objeto de candidatos em array para facilitar filtros
-          const listaCandidatos = Object.values(dadosCandidatos);
+              // Converte o objeto de candidatos em array
+              const listaCandidatos = Object.values(dadosCandidatos);
 
-          // Formata a lista de membros e injeta a contagem de registros correspondente
-          const listaMembrosFormatada = Object.keys(dadosUsuarios).map((uid) => {
-            const totalRegistros = listaCandidatos.filter(
-              (candidato) => candidato.observerUid === uid
-            ).length;
+              const listaMembrosFormatada = Object.keys(dadosUsuarios).map(
+                (uid) => {
+                  // Filtra os candidatos registrados por este usuário específico (observerUid)
+                  const candidatosDoMembro = listaCandidatos.filter(
+                    (candidato) => candidato.observerUid === uid,
+                  );
 
-            return {
-              uid,
-              ...dadosUsuarios[uid],
-              totalRegistros,
-            };
-          });
+                  // Contagem por status referente aos candidatos do membro
+                  const total = candidatosDoMembro.length;
+                  const emAnalise = candidatosDoMembro.filter(
+                    (c) =>
+                      c.status === "Em análise" || c.status === "em_analise",
+                  ).length;
+                  const preliminar = candidatosDoMembro.filter(
+                    (c) =>
+                      c.status === "Preliminar" || c.status === "preliminar",
+                  ).length;
+                  const provisoria = candidatosDoMembro.filter(
+                    (c) =>
+                      c.status === "Provisória" ||
+                      c.status === "Provisório" ||
+                      c.status === "provisoria",
+                  ).length;
 
-          // Opcional: Ordena os membros por quem tem mais registros enviados
-          listaMembrosFormatada.sort((a, b) => b.totalRegistros - a.totalRegistros);
+                  return {
+                    uid,
+                    ...dadosUsuarios[uid],
+                    totalRegistros: total,
+                    emAnalise,
+                    preliminar,
+                    provisoria,
+                  };
+                },
+              );
 
-          setMembros(listaMembrosFormatada);
-        } else {
-          setMembros([]);
-        }
+              // Ordena os membros do maior para o menor em relação ao total de registros
+              listaMembrosFormatada.sort(
+                (a, b) => b.totalRegistros - a.totalRegistros,
+              );
+
+              setMembros(listaMembrosFormatada);
+            } else {
+              setMembros([]);
+            }
+            setLoadingData(false);
+          },
+          (err) => {
+            console.error("Erro ao ler dados de candidatos:", err);
+            setLoadingData(false);
+          },
+        );
+      },
+      (err) => {
+        console.error("Erro ao ler dados de usuários:", err);
         setLoadingData(false);
-      }, (err) => {
-        console.error("Erro ao ler dados de candidatos:", err);
-        setLoadingData(false);
-      });
-    }, (err) => {
-      console.error("Erro ao ler dados de usuários:", err);
-      setLoadingData(false);
-    });
+      },
+    );
 
     return () => {
       unsubscribeUsuarios();
     };
   }, [loadingAuth]);
 
-  // Tela de transição enquanto verifica permissões e sincroniza os nós
   if (loadingAuth || loadingData) {
     return (
-      <main className="login-main" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-        <p className="login-text" style={{ fontFamily: "'Space Mono', monospace" }}>
+      <main
+        className="center-container"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <p
+          className="login-text"
+          style={{ fontFamily: "'Space Mono', monospace" }}
+        >
           Verificando credenciais e carregando banco de dados...
         </p>
       </main>
@@ -109,20 +151,11 @@ export default function ListaMembros() {
   }
 
   return (
-    <main>      
-      <header style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <b>{membros.length}</b>
-          <p>Membros Cadastrados</p>
-        </div>
-        <div style={{backgroundColor: "transparent"}}>
-          <Link href="/" className="btn secondary" style={{ fontSize: "14px", textDecoration: "none" }}>
-            Voltar ao Dashboard
-          </Link>
-        </div>
-      </header>
-
+    <main>
       <div className="container">
+        <p>
+          <b>Membros cadastrados:</b> {membros.length}
+        </p>
         <div className="table-responsive">
           <table className="table">
             <thead>
@@ -131,13 +164,19 @@ export default function ListaMembros() {
                 <th>E-mail</th>
                 <th>Função</th>
                 <th style={{ textAlign: "center" }}>Candidatos Registrados</th>
-                <th style={{ textAlign: "center" }}>Gerenciar</th>
               </tr>
             </thead>
             <tbody>
               {membros.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", paddingBlock: "30px", color: "var(--dark-gray)" }}>
+                  <td
+                    colSpan={4}
+                    style={{
+                      textAlign: "center",
+                      paddingBlock: "30px",
+                      color: "var(--dark-gray)",
+                    }}
+                  >
                     Nenhum membro encontrado no banco de dados.
                   </td>
                 </tr>
@@ -145,25 +184,73 @@ export default function ListaMembros() {
                 membros.map((membro) => (
                   <tr key={membro.uid}>
                     <td>
-                      <Link href={`/admin/membros/${membro.uid}`} style={{ fontWeight: "600" }}>
-                        {membro.name || "Sem nome cadastrado"}
-                      </Link>
-                    </td>
-                    <td style={{ color: "var(--dark-gray)", fontFamily: "'Space Mono', monospace", fontSize: "14px" }}>
-                      {membro.email}
+                      <div className="withbtn-field">
+                        <Link
+                          href={`/admin/membros/${membro.uid}`}
+                          className="underlined"
+                        >
+                          {membro.name || "Sem nome cadastrado"}
+                        </Link>
+
+                        <button
+                          className="icon"
+                          onClick={() => {
+                            navigator.clipboard.writeText(membro.name);
+                            toast.success("Nome copiado!");
+                          }}
+                        >
+                          <CopyIcon />
+                        </button>
+                      </div>
                     </td>
                     <td>
-                      <span className={`status-${membro.admin ? "success" : "em-analise"}`} style={{ fontSize: "12px" }}>
+                      <div className="withbtn-field">
+                        {membro.email}
+                        <button
+                          className="icon"
+                          onClick={() => {
+                            navigator.clipboard.writeText(membro.email);
+                            toast.success("E-mail copiado!");
+                          }}
+                        >
+                          <CopyIcon />
+                        </button>
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className={`status-${membro.admin ? "success" : "em-analise"}`}
+                      >
                         {membro.admin ? "Administrador" : "Observador"}
                       </span>
                     </td>
-                    <td style={{ textAlign: "center", fontWeight: "bold" }}>
-                      {membro.totalRegistros}
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <Link href={`/admin/membros/${membro.uid}`} className="btn icon">
-                        <GearSixIcon />
-                      </Link>
+                    <td>
+                      <div className="container-count-badge">
+                        <p
+                          className="count-badge count-badge-total"
+                          title="Total"
+                        >
+                          {membro.totalRegistros || 0}
+                        </p>
+                        <p
+                          className="count-badge count-badge-review"
+                          title="Em Analise"
+                        >
+                          {membro.emAnalise || 0}
+                        </p>
+                        <p
+                          className="count-badge count-badge-premilinar"
+                          title="Preliminar"
+                        >
+                          {membro.preliminar || 0}
+                        </p>
+                        <p
+                          className="count-badge count-badge-provisional"
+                          title="Provisória"
+                        >
+                          {membro.provisoria || 0}
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ))
