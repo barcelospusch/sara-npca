@@ -1,0 +1,307 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap");
+
+:root {
+  --primary: #cc4331;
+  --secondary: #ffef86;
+  --success: #5bc65e;
+  --blue: #1e90ff;
+  --white: #fff;
+  --black: #000;
+  --dark-gray: #1c1c1c;
+  --light-gray: #f9f9f9;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Space Mono", monospace;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Playfair Display", serif;
+  color: var(--primary);
+}
+
+a {
+  text-decoration: 2px solid var(--primary);
+  color: var(--black);
+}
+
+button,
+a.btn {
+  cursor: pointer;
+  outline: none;
+  height: 30px !important;
+  padding-inline: 10px;
+  border: none;
+  background-color: var(--primary);
+  color: var(--white);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 16px;
+  &.icon {
+    width: 30px;
+    font-size: 20px;
+    padding: 0;
+    text-align: center;
+    justify-content: center;
+  }
+}
+
+/* Navigation */
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-inline: 20px;
+  height: 50px;
+  background-color: var(--white);
+  border-bottom: 2px solid var(--light-gray);
+}
+nav div {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+nav div span.divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--dark-gray);
+}
+
+/* Footer */
+footer{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50px;
+  background-color: var(--white);
+  border-top: 2px solid var(--light-gray);
+}
+
+
+/* Main */
+main {
+  padding: 20px 4rem;
+}
+
+main header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+main header div {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  background-color: var(--secondary);
+  padding: 10px;
+}
+
+/* Container da Tabela */
+main div.container {
+  margin-top: 30px;
+  width: 100%;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto; /* Garante que seja responsivo em telas menores */
+  border: 2px solid var(--black); /* Borda forte estilo brutalista */
+}
+
+/* Estrutura da Tabela */
+table.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  background-color: var(--white);
+}
+
+/* Cabeçalho da Tabela */
+table.table thead {
+  background-color: var(--black);
+  color: var(--white);
+}
+
+table.table th {
+  padding: 12px 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  border-bottom: 2px solid var(--black);
+}
+
+/* Linhas e Células */
+table.table tbody tr {
+  border-bottom: 1px solid var(--dark-gray);
+  transition: background-color 0.2s ease;
+}
+
+/* Efeito Zebrado sutil */
+table.table tbody tr:nth-child(even) {
+  background-color: var(--light-gray);
+}
+
+/* Efeito de Hover na linha */
+table.table tbody tr:hover {
+  background-color: rgba(255, 239, 134, 0.2); /* Tom bem suave do --secondary */
+}
+
+table.table td {
+  padding: 12px 15px;
+  font-size: 0.9rem;
+  color: var(--dark-gray);
+  vertical-align: middle;
+}
+
+/* Estilização dos Status */
+table.table td span {
+  display: inline-block;
+  padding: 2px 8px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  border: 1px solid var(--black);
+}
+
+/* Cores específicas baseadas nas classes que o JS gera dinamicamente */
+table.table td span.status-em-analise,
+table.table td span.status-em-analise {
+  background-color: var(--secondary);
+  color: var(--black);
+}
+
+table.table td span.status-preliminar {
+  background-color: var(--blue);
+  color: var(--white);
+}
+
+table.table td span.status-provisorio {
+  background-color: var(--success);
+  color: var(--white);
+}
+
+/* Container e Alinhamento Central */
+.login-main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 50px);
+}
+
+/* Caixa de Login Brutalistas */
+.login-box {
+  width: 100%;
+  max-width: 400px;
+  background-color: var(--white);
+  border: 2px solid var(--black);
+  padding: 30px;
+  box-shadow: 4px 4px 0px var(--black);
+}
+
+.login-text {
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+  color: var(--dark-gray);
+}
+
+/* Abas de Navegação (Tabs) */
+.login-tabs {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  margin-bottom: 25px;
+  border-bottom: 2px solid var(--black);
+  padding-bottom: 10px;
+}
+
+.login-tab-btn {
+  flex: 1;
+  background: none;
+  color: var(--black);
+  border: 1px solid var(--dark-gray);
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: "Space Mono", monospace;
+}
+
+.login-tab-btn.active {
+  background-color: var(--secondary);
+  color: var(--black);
+  border: 2px solid var(--black);
+}
+
+/* Formulário e Inputs */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.input-group label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.login-input {
+  height: 40px;
+  padding-inline: 10px;
+  font-family: "Space Mono", monospace;
+  border: 2px solid var(--black);
+  outline: none;
+  background-color: var(--white);
+}
+
+.login-input:focus {
+  background-color: var(--light-gray);
+  border-color: var(--primary);
+}
+
+/* Botão de Envio (Aproveitando a base de 'button' do seu CSS) */
+.login-submit-btn {
+  width: 100%;
+  height: 40px !important; /* Sobrescreve os 30px do seletor genérico */
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1rem;
+  border: 2px solid var(--black);
+  margin-top: 10px;
+  box-shadow: 2px 2px 0px var(--black);
+}
+
+.login-submit-btn:active {
+  box-shadow: 0px 0px 0px var(--black);
+  transform: translate(2px, 2px);
+}
+
+.code-highlight-banner {
+  width: 100%;
+  background-color: var(--secondary);
+  color: var(--black);
+  padding: 10px;
+  text-align: center;
+  margin-block: 4px;
+}
