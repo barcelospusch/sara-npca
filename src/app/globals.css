@@ -29,7 +29,7 @@ h6 {
 }
 
 a {
-  text-decoration: 2px solid var(--primary);
+  text-decoration: 2px solid var(--primary) !important;
   color: var(--black);
 }
 
@@ -110,7 +110,7 @@ main header {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   gap: 20px;
 }
 main header div.box {
@@ -133,7 +133,7 @@ main header div.box {
 
 /* Container da Tabela */
 main div.container {
-  margin-top: 30px;
+  margin-top: 10px;
   width: 100%;
 }
 
@@ -166,6 +166,34 @@ table.table th {
   border-bottom: 2px solid var(--black);
 }
 
+table.table th div.icon-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  span {
+    display: block;
+  }
+  .icon {
+    display: none;
+  }
+}
+@media (width<=850) {
+  /* table.table th{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  } */
+  table.table th div.icon-label {
+    span {
+      display: none;
+    }
+    .icon {
+      display: block;
+    }
+  }
+}
+
 /* Linhas e Células */
 table.table tbody tr {
   border-bottom: 1px solid var(--dark-gray);
@@ -190,7 +218,8 @@ table.table td {
 }
 
 /* Estilização dos Status */
-table.table td span {
+table.table td span.status-text,
+table.table td span.status-badge {
   display: inline-block;
   padding: 2px 8px;
   font-weight: 700;
@@ -199,20 +228,20 @@ table.table td span {
   border: 1px solid var(--black);
 }
 
-table.table td span.status-em-analise,
-table.table td span.status-em-analise {
-  background-color: var(--secondary);
-  color: var(--black);
+table.table td span.status-badge {
+  display: none;
+  padding: 8px;
+  width: 10px;
+  height: 10px;
 }
 
-table.table td span.status-preliminar {
-  background-color: var(--blue);
-  color: var(--white);
-}
-
-table.table td span.status-provisorio {
-  background-color: var(--green);
-  color: var(--white);
+@media (width<=850px) {
+  table.table td span.status-badge {
+    display: block;
+  }
+  table.table td span.status-text {
+    display: none;
+  }
 }
 
 table.table td div.withbtn-field {
@@ -378,4 +407,117 @@ table.table td div.container-count-badge p.count-badge {
     text-align: center;
     margin-bottom: 10px;
   }
+}
+
+
+.tab-switcher {
+  display: flex;
+  gap: 8px;
+  margin-block: 4px;
+}
+
+
+.calendar-grid{
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+.calendar-day {
+  min-height: 90px;
+  border: 1px solid var(--dark-gray);
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.calendar-day.empty {
+  background-color: var(--light-gray);
+  border: 1px dashed var(--dark-gray);
+}
+.day-number {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.day-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  max-height: 80px;
+}
+.calendar-item-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--dark-gray);
+  color: var(--black);
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 11px;
+  text-align: left;
+  width: 100%;
+}
+
+.status-badge {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--black);
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.status-provisorio {
+  background-color: var(--green);
+}
+.status-preliminar {
+  background-color: var(--blue);
+  color: var(--white);
+}
+.status-em-analise {
+  background-color: var(--secondary);
+}
+
+
+.modal-backdrop{
+  position: fixed;
+  inset: 0;
+  background-color: #00000099;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.modal-content{
+  background-color: var(--white);
+  color: var(--black);
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  position: relative;
+  border: 2px solid var(--black);
+  box-shadow: 4px 4px 0px var(--black);
+}
+.modal-close-btn{
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: bold;
+}
+.modal-code{
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  text-align: center;
+  justify-content: center;
+}
+.modal-infos{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }

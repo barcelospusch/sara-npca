@@ -219,7 +219,7 @@ export default function ListaMembros() {
                     </td>
                     <td>
                       <span
-                        className={`status-${membro.admin ? "success" : "em-analise"}`}
+                        className={`status-${membro.admin ?? "em-analise"}`}
                       >
                         {membro.admin ? "Administrador" : "Observador"}
                       </span>

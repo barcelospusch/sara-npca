@@ -1,7 +1,13 @@
 "use client";
 
 import { auth, database } from "@/firebase";
-import { PlusCircleIcon, ShieldCheckIcon, SignInIcon, SignOutIcon } from "@phosphor-icons/react";
+import {
+  CalendarDotsIcon,
+  PlusCircleIcon,
+  ShieldCheckIcon,
+  SignInIcon,
+  SignOutIcon,
+} from "@phosphor-icons/react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { get, ref } from "firebase/database";
 import Link from "next/link";
@@ -17,7 +23,7 @@ export default function Navbar() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      
+
       if (currentUser) {
         try {
           const userRef = ref(database, `usuarios/${currentUser.uid}`);
@@ -29,13 +35,16 @@ export default function Navbar() {
             setIsAdmin(false);
           }
         } catch (error) {
-          console.error("Erro ao verificar permissão de admin na navbar:", error);
+          console.error(
+            "Erro ao verificar permissão de admin na navbar:",
+            error,
+          );
           setIsAdmin(false);
         }
       } else {
         setIsAdmin(false);
       }
-      
+
       setLoading(false);
     });
 
@@ -62,7 +71,10 @@ export default function Navbar() {
             {user ? (
               <>
                 {isAdmin && (
-                  <Link href="/admin/membros" className="btn secondary withicon">
+                  <Link
+                    href="/admin/membros"
+                    className="btn secondary withicon"
+                  >
                     <ShieldCheckIcon size={20} />
                     Painel
                   </Link>
@@ -72,7 +84,7 @@ export default function Navbar() {
                   <PlusCircleIcon size={20} />
                   Registrar
                 </Link>
-                <span className="divider"/>
+                <span className="divider" />
                 <button onClick={handleLogout} className="icon">
                   <SignOutIcon />
                 </button>
