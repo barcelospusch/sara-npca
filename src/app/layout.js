@@ -16,7 +16,7 @@ export default function RootLayout({ children }) {
         <Nav />
         {children}
         <Footer />
-        <Toaster position="top-right" reverseOrder={false} />
+        <Toaster position="top-left" reverseOrder={false} />
       </body>
     </html>
   );

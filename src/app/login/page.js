@@ -53,7 +53,7 @@ export default function Login() {
         updates = {
           uid: user.uid,
           email: user.email,
-          nome: user.displayName || "Usuário sem Nome", // Corrigido de 'name' para 'nome'
+          name: user.displayName || "Usuário sem Nome", // Corrigido de 'name' para 'nome'
           lastLogin: serverTimestamp(),
           admin: false // Só ganha false se for a primeira criação da conta
         };

@@ -49,6 +49,7 @@ a.btn {
   font-size: 16px;
   &.icon {
     width: 30px;
+    min-width: 30px;
     font-size: 20px;
     padding: 0;
     text-align: center;
@@ -58,6 +59,9 @@ a.btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    svg{
+      font-size: 20px;
+    }
   }
   &.secondary {
     background-color: var(--secondary);
@@ -86,6 +90,26 @@ nav div span.divider {
   background-color: var(--dark-gray);
 }
 
+@media (width<=850px) {
+  nav div{
+    gap: 8px;
+    a.btn{
+      span{
+        display: none;
+      }
+      &.withicon{
+        width: 30px;
+        padding: 0;
+        justify-content: center;
+        font-size: 20px;
+        svg{
+          size:initial;
+        }
+      }
+    }
+  }
+}
+
 /* Footer */
 footer {
   display: flex;
@@ -94,6 +118,7 @@ footer {
   height: 50px;
   background-color: var(--white);
   border-top: 2px solid var(--light-gray);
+  padding-inline: 20px;
 }
 
 hr {
@@ -104,6 +129,12 @@ hr {
 /* Main */
 main {
   padding: 20px 4rem;
+}
+
+@media (width<=700px) {
+  main {
+    padding: 20px;
+  }
 }
 
 main header {
@@ -119,6 +150,7 @@ main header div.box {
   flex-direction: column;
   border: 2px solid var(--black);
   padding: 10px;
+  min-width: 100px;
   &.box-review {
     background-color: var(--secondary);
   }
@@ -128,6 +160,21 @@ main header div.box {
   }
   &.box-provisional {
     background-color: var(--green);
+  }
+}
+@media (width<=850px) {
+  main header{
+    gap: 0;
+  }
+  main header div.box {
+    flex: 1;
+    min-width: auto;
+  }
+  main header div.box:not(:last-child) {
+    border-right: none;
+  }
+  main header div.box small {
+    display: none;
   }
 }
 
@@ -177,20 +224,8 @@ table.table th div.icon-label {
   .icon {
     display: none;
   }
-}
-@media (width<=850) {
-  /* table.table th{
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  } */
-  table.table th div.icon-label {
-    span {
-      display: none;
-    }
-    .icon {
-      display: block;
-    }
+  svg{
+    font-size: 20px;
   }
 }
 
@@ -355,7 +390,7 @@ table.table td div.container-count-badge p.count-badge {
   gap: 5px;
 }
 
-.input-group label {
+.input-group label, .input-group .label {
   font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -368,6 +403,11 @@ table.table td div.container-count-badge p.count-badge {
   border: 2px solid var(--black);
   outline: none;
   background-color: var(--white);
+}
+textarea.login-input {
+  min-height: 80px;
+  resize: vertical;
+  padding-top: 6px;
 }
 
 .login-input:focus {
@@ -396,6 +436,7 @@ table.table td div.container-count-badge p.count-badge {
   width: 100%;
   background-color: var(--secondary);
   color: var(--black);
+  border: 2px solid var(--black);
   padding: 10px;
   text-align: center;
   margin-block: 4px;
@@ -410,53 +451,42 @@ table.table td div.container-count-badge p.count-badge {
 }
 
 
-.tab-switcher {
-  display: flex;
-  gap: 8px;
-  margin-block: 4px;
-}
-
-
-.calendar-grid{
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
-}
-.calendar-day {
-  min-height: 90px;
-  border: 1px solid var(--dark-gray);
-  border-radius: 6px;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-}
-.calendar-day.empty {
-  background-color: var(--light-gray);
-  border: 1px dashed var(--dark-gray);
-}
-.day-number {
-  font-size: 12px;
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-.day-items {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-  max-height: 80px;
-}
-.calendar-item-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--dark-gray);
-  color: var(--black);
-  padding: 2px 6px;
-  cursor: pointer;
-  font-size: 11px;
-  text-align: left;
+.input-ratio{
   width: 100%;
+  display: flex;
+  .ratio-label{
+    height: 30px;
+    width: 100%;
+    border: 2px solid var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+
+    input{
+      visibility: hidden;
+      display:none;
+    }
+    &.selected{
+      background-color: var(--primary);
+      color: var(--white);
+      &.review{
+        background-color: var(--secondary);
+        color: var(--black);
+      }
+      &.preliminar{
+        background-color: var(--blue);
+        color: var(--white);
+      }
+      .provisional{
+        background-color: var(--green);
+        color: var(--black);
+      }
+    }
+  }
+  .ratio-label:not(:last-child){
+    border-right: none;
+  }
 }
 
 .status-badge {
