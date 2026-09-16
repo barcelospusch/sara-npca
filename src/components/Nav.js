@@ -4,11 +4,11 @@ import { auth, database } from "@/firebase";
 import {
   ArrowCounterClockwiseIcon,
   BackspaceIcon,
+  ChartBarIcon,
   ExportIcon,
-  PlusCircleIcon,
+  PlusIcon,
   ShieldCheckIcon,
   SignInIcon,
-  SignOutIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -165,42 +165,54 @@ export default function Navbar() {
                         href="/admin/membros"
                         className="btn secondary withicon"
                       >
-                        <ShieldCheckIcon/>
+                        <ShieldCheckIcon />
                         <span>Painel</span>
                       </Link>
                       <button
                         type="button"
-                        className="btn icon secondary"
+                        className="btn withicon secondary"
                         title="Atualizar sequência de códigos"
                         aria-label="Atualizar sequência de códigos"
                         onClick={handleOpenModal}
                       >
                         <ArrowCounterClockwiseIcon />
+                        <span>Align</span>
                       </button>
+                      <Link
+                        href="/estatisticas"
+                        className="btn withicon secondary"
+                        title="Estatísticas"
+                        aria-label="Estatísticas"
+                      >
+                        <ChartBarIcon size={20} />
+                        <span>Estatísticas</span>
+                      </Link>
+                      <span className="divider" />
                     </>
                   )}
 
-                  <Link href="/registrar" className="btn withicon">
-                    <PlusCircleIcon/>
+                  <Link href="/registrar" className="btn withicon ">
+                    <PlusIcon />
                     <span>Registrar</span>
                   </Link>
                   <Link
                     href="/exportar"
-                    className="btn icon"
+                    className="btn withicon secondary"
                     title="Exportar relatório"
                     aria-label="Exportar relatório"
                   >
-                    <ExportIcon/>
+                    <ExportIcon />
+                    <span>Exportar</span>
                   </Link>
                   <span className="divider" />
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="icon"
+                    className="secondary"
                     title="Sair"
                     aria-label="Sair"
                   >
-                    <SignOutIcon />
+                    <span>Sair</span>
                   </button>
                 </>
               ) : (
@@ -242,23 +254,23 @@ export default function Navbar() {
             <h2 id="counter-modal-title">Sequência de Códigos</h2>
 
             {loadingCounters ? (
-              <p className="counter-loading">
-                Carregando dados do servidor...
-              </p>
+              <p className="counter-loading">Carregando dados do servidor...</p>
             ) : (
               <>
                 <div className="modal-infos counter-infos">
                   <div className="counter-info">
                     <span>Último registrado:</span>
                     <strong>
-                      NPC{String(lastCodeNumber).padStart(4, "0")} ({lastCodeNumber})
+                      NPC{String(lastCodeNumber).padStart(4, "0")} (
+                      {lastCodeNumber})
                     </strong>
                   </div>
 
                   <div className="counter-info">
                     <span>Contador Temporário:</span>
                     <strong>
-                      NPC{String(tempCodeNumber).padStart(4, "0")} ({tempCodeNumber})
+                      NPC{String(tempCodeNumber).padStart(4, "0")} (
+                      {tempCodeNumber})
                     </strong>
                   </div>
                 </div>

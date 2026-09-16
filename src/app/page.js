@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
-import { ref, onValue, get } from "firebase/database";
+import { ref, onValue, get, update, remove } from "firebase/database";
 import { auth, database } from "@/firebase";
 import toast from "react-hot-toast";
 import {
   CopyIcon,
   FileTextIcon,
+  FloppyDiskIcon,
   FunnelIcon,
+  TrashIcon,
   XIcon,
 } from "@phosphor-icons/react";
 
@@ -19,6 +21,9 @@ export default function Home() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
   const [selectedMpcItem, setSelectedMpcItem] = useState(null);
+  const reportTextareaRef = useRef(null);
+  const [savingCandidate, setSavingCandidate] = useState(false);
+  const [deletingCandidate, setDeletingCandidate] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState({
     sort: "code-desc",
@@ -199,6 +204,75 @@ export default function Home() {
     }
   };
 
+  const updateSelectedCandidate = (field, value) => {
+    setSelectedMpcItem((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleUpdateCandidate = async (event) => {
+    event.preventDefault();
+    if (!selectedMpcItem) return;
+
+    setSavingCandidate(true);
+    const toastId = toast.loading("Atualizando informações do candidato...");
+
+    try {
+      await update(ref(database, `candidatos/${selectedMpcItem.code}`), {
+        set: selectedMpcItem.set || "",
+        quadrant: selectedMpcItem.quadrant || "",
+        ps: selectedMpcItem.ps || "PS1",
+        status: selectedMpcItem.status || "Em análise",
+        mpcReport: selectedMpcItem.mpcReport || "",
+      });
+
+      toast.success(
+        `Candidato ${selectedMpcItem.code} atualizado com sucesso!`,
+        {
+          id: toastId,
+        },
+      );
+      setSelectedMpcItem(null);
+    } catch (error) {
+      console.error("Erro ao atualizar o candidato:", error);
+      toast.error("Falha ao salvar as alterações.", { id: toastId });
+    } finally {
+      setSavingCandidate(false);
+    }
+  };
+
+  const handleDeleteCandidate = async () => {
+    if (!selectedMpcItem) return;
+
+    const confirmDelete = window.confirm(
+      `Tem certeza que deseja excluir permanentemente o candidato ${selectedMpcItem.code}?`,
+    );
+
+    if (!confirmDelete) return;
+
+    setDeletingCandidate(true);
+    const toastId = toast.loading("Removendo candidato...");
+
+    try {
+      await remove(ref(database, `candidatos/${selectedMpcItem.code}`));
+      toast.success(`Candidato ${selectedMpcItem.code} excluído com sucesso!`, {
+        id: toastId,
+      });
+      setSelectedMpcItem(null);
+    } catch (error) {
+      console.error("Erro ao excluir o candidato:", error);
+      toast.error("Erro ao tentar remover o candidato.", { id: toastId });
+    } finally {
+      setDeletingCandidate(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedMpcItem || !reportTextareaRef.current) return;
+
+    const textarea = reportTextareaRef.current;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [selectedMpcItem]);
+
   if (loadingAuth || loadingData) {
     return (
       <main className="center-container dashboard-loading">
@@ -297,8 +371,8 @@ export default function Home() {
                   </div>
                 </th>
                 <th>
-                  <div className="icon-label" title="MPC Report">
-                    <span>MPC</span>
+                  <div className="icon-label" title="Resumo">
+                    <span>Resumo</span>
                   </div>
                 </th>
               </tr>
@@ -306,27 +380,14 @@ export default function Home() {
             <tbody>
               {displayList.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="dashboard-empty"
-                  >
+                  <td colSpan={8} className="dashboard-empty">
                     Nenhum candidato a asteroide registrado até o momento.
                   </td>
                 </tr>
               ) : (
                 displayList.map((item, index) => (
                   <tr key={item.code || index}>
-                    <td>
-                      <div className="withbtn-field">
-                        {isAdmin ? (
-                          <Link href={`/admin/candidatos/${item.code}`}>
-                            {item.code}
-                          </Link>
-                        ) : (
-                          <>{item.code}</>
-                        )}
-                      </div>
-                    </td>
+                    <td>{item.code}</td>
                     <td>{item.set}</td>
                     <td>{formatDate(item.date)}</td>
                     <td>{item.quadrant}</td>
@@ -353,7 +414,7 @@ export default function Home() {
                         title={item.status}
                       ></span>
                     </td>
-                    <td>
+                    <td style={{ display: "flex", justifyContent: "center" }}>
                       {item.mpcReport ? (
                         <button
                           className="btn icon"
@@ -393,7 +454,7 @@ export default function Home() {
               <XIcon size={20} />
             </button>
 
-            <h2 id="dashboard-filter-title">Filtros da tabela</h2>
+            <h2 id="dashboard-filter-title">Filtrar candidatos</h2>
 
             <form onSubmit={applyFilters} className="dashboard-filter-form">
               <div className="input-group">
@@ -561,37 +622,254 @@ export default function Home() {
         </div>
       )}
 
-      {/* MODAL DE VISUALIZAÇÃO DO MPC REPORT */}
+      {/* MODAL DE VISUALIZAÇÃO DO CANDIDATO */}
       {selectedMpcItem && (
-        <div className="modal-backdrop">
-          <div className="modal-content report-modal">
+        <div
+          className="modal-backdrop"
+          onMouseDown={() => setSelectedMpcItem(null)}
+        >
+          <div
+            className="modal-content report-modal candidate-view-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="candidate-modal-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <button
+              type="button"
               className="modal-close-btn"
               onClick={() => setSelectedMpcItem(null)}
+              title="Fechar informações do candidato"
+              aria-label="Fechar informações do candidato"
             >
               <XIcon size={20} />
             </button>
 
-            <h2 className="modal-code">{selectedMpcItem.code} - MPC Report</h2>
-
-            <div className="modal-infos report-modal-infos">
-              <textarea
-                readOnly
-                value={
-                  selectedMpcItem.mpcReport || "Nenhum relatório cadastrado."
-                }
-                rows={10}
-                className="login-input report-textarea"
-              />
+            <div className="code-highlight-banner candidate-code">
+              <strong id="candidate-modal-title">{selectedMpcItem.code}</strong>
             </div>
 
-            <button
-              className="btn login-submit-btn report-copy-btn"
-              onClick={handleCopyMpcReport}
-            >
-              <CopyIcon size={20} />
-              Copiar MPC Report
-            </button>
+            {isAdmin ? (
+              <form
+                onSubmit={handleUpdateCandidate}
+                className="login-form candidate-modal-form"
+              >
+                <div className="candidate-meta">
+                  <div className="candidate-meta-item">
+                    <span className="candidate-meta-label">Observador</span>
+                    <strong>
+                      <Link
+                        href={`/admin/membros?uid=${encodeURIComponent(selectedMpcItem.observerUid || "")}`}
+                        onClick={() => setSelectedMpcItem(null)}
+                      >
+                        {selectedMpcItem.observer || "-"}
+                      </Link>
+                    </strong>
+                  </div>
+                  <div className="candidate-meta-item candidate-meta-date">
+                    <span className="candidate-meta-label">
+                      Data de Registro
+                    </span>
+                    <span>{formatDate(selectedMpcItem.date)}</span>
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="dashboard-candidate-set">Set</label>
+                  <input
+                    id="dashboard-candidate-set"
+                    type="text"
+                    value={selectedMpcItem.set || ""}
+                    onChange={(event) =>
+                      updateSelectedCandidate("set", event.target.value)
+                    }
+                    required
+                    disabled={savingCandidate || deletingCandidate}
+                    className="login-input"
+                    placeholder="Ex: XY49 p00"
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="dashboard-candidate-quadrant">
+                    Quadrante
+                  </label>
+                  <input
+                    id="dashboard-candidate-quadrant"
+                    type="text"
+                    value={selectedMpcItem.quadrant || ""}
+                    onChange={(event) =>
+                      updateSelectedCandidate("quadrant", event.target.value)
+                    }
+                    required
+                    disabled={savingCandidate || deletingCandidate}
+                    className="login-input"
+                  />
+                </div>
+
+                <div className="input-group">
+                  <span className="label">PS</span>
+                  <div className="input-ratio">
+                    {["PS1", "PS2"].map((value) => (
+                      <label
+                        key={value}
+                        htmlFor={`dashboard-candidate-${value.toLowerCase()}`}
+                        className={`ratio-label ${(selectedMpcItem.ps || "PS1") === value ? "selected" : ""}`}
+                      >
+                        <input
+                          id={`dashboard-candidate-${value.toLowerCase()}`}
+                          type="radio"
+                          name="dashboard-candidate-ps"
+                          value={value}
+                          checked={(selectedMpcItem.ps || "PS1") === value}
+                          onChange={(event) =>
+                            updateSelectedCandidate("ps", event.target.value)
+                          }
+                          disabled={savingCandidate || deletingCandidate}
+                        />
+                        {value}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <span className="label">Status da Análise</span>
+                  <div className="input-ratio">
+                    {[
+                      ["Em análise", "review"],
+                      ["Preliminar", "preliminar"],
+                      ["Provisório", "provisional"],
+                    ].map(([value, className]) => (
+                      <label
+                        key={value}
+                        htmlFor={`dashboard-candidate-status-${className}`}
+                        className={`ratio-label ${(selectedMpcItem.status || "Em análise") === value ? `selected ${className}` : ""}`}
+                      >
+                        <input
+                          id={`dashboard-candidate-status-${className}`}
+                          type="radio"
+                          name="dashboard-candidate-status"
+                          value={value}
+                          checked={
+                            (selectedMpcItem.status || "Em análise") === value
+                          }
+                          onChange={(event) =>
+                            updateSelectedCandidate(
+                              "status",
+                              event.target.value,
+                            )
+                          }
+                          disabled={savingCandidate || deletingCandidate}
+                        />
+                        {value}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="dashboard-candidate-mpc-report">
+                    MPC Report
+                  </label>
+                  <textarea
+                    id="dashboard-candidate-mpc-report"
+                    ref={reportTextareaRef}
+                    readOnly
+                    value={
+                      selectedMpcItem.mpcReport ||
+                      "Nenhum relatório cadastrado."
+                    }
+                    className="login-input report-textarea"
+                  />
+                </div>
+
+                <div className="candidate-actions">
+                  <button
+                    type="button"
+                    onClick={handleDeleteCandidate}
+                    disabled={savingCandidate || deletingCandidate}
+                    className="btn icon login-submit-btn candidate-delete-button"
+                    title="Excluir candidato"
+                    aria-label="Excluir candidato"
+                  >
+                    <TrashIcon />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyMpcReport}
+                    disabled={savingCandidate || deletingCandidate}
+                    className="btn login-submit-btn candidate-copy-button"
+                  >
+                    <CopyIcon size={20} />
+                    Copiar <i>MPC Report</i>
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingCandidate || deletingCandidate}
+                    className="btn login-submit-btn candidate-save-button"
+                  >
+                    <FloppyDiskIcon size={20}/>
+                    {savingCandidate
+                      ? "Salvando Alterações..."
+                      : "Salvar Modificações"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="modal-infos report-modal-infos">
+                <div className="candidate-modal-details">
+                  <div>
+                    <span>Código</span>
+                    <strong>{selectedMpcItem.code}</strong>
+                  </div>
+                  <div>
+                    <span>Observador</span>
+                    <strong>{selectedMpcItem.observer || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Data de Registro</span>
+                    <strong>{formatDate(selectedMpcItem.date)}</strong>
+                  </div>
+                  <div>
+                    <span>Set</span>
+                    <strong>{selectedMpcItem.set || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Quadrante</span>
+                    <strong>{selectedMpcItem.quadrant || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>PS</span>
+                    <strong>{selectedMpcItem.ps || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Status da Análise</span>
+                    <strong>{selectedMpcItem.status || "Em análise"}</strong>
+                  </div>
+                </div>
+
+                <label htmlFor="candidate-mpc-report">MPC Report</label>
+                <textarea
+                  id="candidate-mpc-report"
+                  ref={reportTextareaRef}
+                  readOnly
+                  value={
+                    selectedMpcItem.mpcReport || "Nenhum relatório cadastrado."
+                  }
+                  className="login-input report-textarea"
+                />
+
+                <button
+                  type="button"
+                  className="btn login-submit-btn report-copy-btn"
+                  onClick={handleCopyMpcReport}
+                >
+                  <CopyIcon size={20} />
+                  Copiar MPC Report
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
