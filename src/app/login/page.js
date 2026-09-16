@@ -10,7 +10,7 @@ import {
 } from "firebase/auth";
 import { ref, update, serverTimestamp, get } from "firebase/database";
 import { auth, database } from "@/firebase"; 
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -153,13 +153,13 @@ export default function Login() {
   };
 
   return (
-    <main>
-      <div className="center-container">
-        <div className="login-box">
+    <main className="login-page">
+      <div className="center-container login-layout">
+        <div className="login-box login-card">
           {showEmailConfirmation ? (
             <form
               onSubmit={handleManualEmailConfirmation}
-              className="login-form"
+              className="login-form login-confirmation"
             >
               <h2>Confirme seu e-mail</h2>
               <p className="login-text">
@@ -167,8 +167,9 @@ export default function Login() {
                 recebeu o link para confirmar:
               </p>
               <div className="input-group">
-                <label>E-mail de Confirmação</label>
+                <label htmlFor="confirmation-email">E-mail de Confirmação</label>
                 <input
+                  id="confirmation-email"
                   type="email"
                   value={confirmEmail}
                   onChange={(e) => setConfirmEmail(e.target.value)}
@@ -187,11 +188,13 @@ export default function Login() {
             </form>
           ) : (
             <>
-              <h2>Acesso ao SARA</h2>
+              <h2 className="login-title">Acesso ao SARA</h2>
 
-              <div className="login-tabs">
+              <div className="login-tabs" role="tablist" aria-label="Método de acesso">
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={method === "password"}
                   onClick={() => setMethod("password")}
                   className={`login-tab-btn ${method === "password" ? "active" : ""}`}
                 >
@@ -199,6 +202,8 @@ export default function Login() {
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={method === "link"}
                   onClick={() => setMethod("link")}
                   className={`login-tab-btn ${method === "link" ? "active" : ""}`}
                 >
@@ -209,8 +214,9 @@ export default function Login() {
               {method === "password" ? (
                 <form onSubmit={handlePasswordLogin} className="login-form">
                   <div className="input-group">
-                    <label>E-mail</label>
+                    <label htmlFor="password-email">E-mail</label>
                     <input
+                      id="password-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -219,8 +225,9 @@ export default function Login() {
                     />
                   </div>
                   <div className="input-group">
-                    <label>Senha</label>
+                    <label htmlFor="password">Senha</label>
                     <input
+                      id="password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -239,8 +246,9 @@ export default function Login() {
               ) : (
                 <form onSubmit={handleLinkLogin} className="login-form">
                   <div className="input-group">
-                    <label>E-mail</label>
+                    <label htmlFor="link-email">E-mail</label>
                     <input
+                      id="link-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
