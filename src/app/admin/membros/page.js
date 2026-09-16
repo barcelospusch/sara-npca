@@ -1,10 +1,9 @@
 "use client";
 
 import { auth, database } from "@/firebase";
-import { CopyIcon } from "@phosphor-icons/react";
+import { CopyIcon, XIcon } from "@phosphor-icons/react";
 import { onAuthStateChanged } from "firebase/auth";
-import { get, onValue, ref } from "firebase/database";
-import Link from "next/link";
+import { get, onValue, ref, remove, set, update } from "firebase/database";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -13,6 +12,11 @@ export default function ListaMembros() {
   const [membros, setMembros] = useState([]);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [memberName, setMemberName] = useState("");
+  const [memberEmail, setMemberEmail] = useState("");
+  const [isAdminRole, setIsAdminRole] = useState(false);
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -130,20 +134,131 @@ export default function ListaMembros() {
     };
   }, [loadingAuth]);
 
+  const handleOpenMember = (membro) => {
+    setSelectedMember(membro);
+    setMemberName(membro.name || "");
+    setMemberEmail(membro.email || "");
+    setIsAdminRole(Boolean(membro.admin));
+  };
+
+  useEffect(() => {
+    if (membros.length === 0) return;
+
+    const requestedUid = new URLSearchParams(window.location.search).get("uid");
+    if (!requestedUid) return;
+
+    const requestedMember = membros.find(
+      (membro) => membro.uid === requestedUid,
+    );
+
+    if (requestedMember) {
+      handleOpenMember(requestedMember);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [membros]);
+
+  const handleCloseMember = () => {
+    if (saving) return;
+    setSelectedMember(null);
+  };
+
+  const handleSaveRole = async (e) => {
+    e.preventDefault();
+
+    if (!selectedMember) return;
+    if (!memberName.trim() || !memberEmail.trim()) {
+      toast.error("Nome e e-mail são obrigatórios.");
+      return;
+    }
+
+    if (
+      selectedMember.uid === auth.currentUser?.uid &&
+      isAdminRole !== Boolean(selectedMember.admin)
+    ) {
+      toast.error(
+        "Você não pode alterar seus próprios privilégios de administrador.",
+      );
+      return;
+    }
+
+    setSaving(true);
+    const toastId = toast.loading("Atualizando privilégios...");
+
+    try {
+      const updatedMember = {
+        name: memberName.trim(),
+        email: memberEmail.trim(),
+        admin: isAdminRole,
+      };
+
+      await update(ref(database, `usuarios/${selectedMember.uid}`), {
+        ...updatedMember,
+      });
+
+      setMembros((currentMembers) =>
+        currentMembers.map((member) =>
+          member.uid === selectedMember.uid
+            ? { ...member, ...updatedMember }
+            : member,
+        ),
+      );
+      setSelectedMember((member) =>
+        member ? { ...member, ...updatedMember } : member,
+      );
+      toast.success("Dados do membro atualizados com sucesso!", {
+        id: toastId,
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar função:", error);
+      toast.error("Falha ao salvar alterações.", { id: toastId });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteMember = async () => {
+    if (!selectedMember) return;
+    if (selectedMember.uid === auth.currentUser?.uid) {
+      toast.error("Você não pode excluir seu próprio acesso.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Tem certeza absoluta de que deseja revogar o acesso de ${selectedMember.name || "este usuário"}? Ele será removido do banco e bloqueado.`,
+    );
+
+    if (!confirmed) return;
+
+    setSaving(true);
+    const toastId = toast.loading("Revogando acessos e limpando registros...");
+
+    try {
+      await set(ref(database, `banidos/${selectedMember.uid}`), {
+        banned: true,
+        email: selectedMember.email,
+        date: new Date().toISOString(),
+      });
+      await remove(ref(database, `usuarios/${selectedMember.uid}`));
+
+      setMembros((currentMembers) =>
+        currentMembers.filter((member) => member.uid !== selectedMember.uid),
+      );
+      setSelectedMember(null);
+      toast.success("Acesso revogado e removido com sucesso!", {
+        id: toastId,
+      });
+    } catch (error) {
+      console.error("Erro ao excluir membro:", error);
+      toast.error("Erro ao processar exclusão no servidor.", { id: toastId });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loadingAuth || loadingData) {
     return (
-      <main
-        className="center-container"
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <p
-          className="login-text"
-          style={{ fontFamily: "'Space Mono', monospace" }}
-        >
+      <main className="center-container members-loading">
+        <p className="login-text members-loading-text">
           Verificando credenciais e carregando banco de dados...
         </p>
       </main>
@@ -151,19 +266,19 @@ export default function ListaMembros() {
   }
 
   return (
-    <main>
-      <div className="container">
-        <p>
+    <main className="members-page">
+      <div className="container members-container">
+        <p className="members-count">
           <b>Membros cadastrados:</b> {membros.length}
         </p>
-        <div className="table-responsive">
+        <div className="table-responsive members-table">
           <table className="table">
             <thead>
               <tr>
                 <th>Nome</th>
                 <th>E-mail</th>
                 <th>Função</th>
-                <th style={{ textAlign: "center" }}>Candidatos Registrados</th>
+                <th className="members-count-header">Candidatos Registrados</th>
               </tr>
             </thead>
             <tbody>
@@ -171,11 +286,7 @@ export default function ListaMembros() {
                 <tr>
                   <td
                     colSpan={4}
-                    style={{
-                      textAlign: "center",
-                      paddingBlock: "30px",
-                      color: "var(--dark-gray)",
-                    }}
+                    className="members-empty"
                   >
                     Nenhum membro encontrado no banco de dados.
                   </td>
@@ -185,17 +296,21 @@ export default function ListaMembros() {
                   <tr key={membro.uid}>
                     <td>
                       <div className="withbtn-field">
-                        <Link
-                          href={`/admin/membros/${membro.uid}`}
-                          className="underlined"
+                        <button
+                          type="button"
+                          className="member-name-button"
+                          onClick={() => handleOpenMember(membro)}
                         >
                           {membro.name || "Sem nome cadastrado"}
-                        </Link>
+                        </button>
 
                         <button
                           className="icon"
+                          type="button"
+                          title="Copiar nome"
+                          aria-label={`Copiar nome de ${membro.name || "membro"}`}
                           onClick={() => {
-                            navigator.clipboard.writeText(membro.name);
+                            navigator.clipboard.writeText(membro.name || "");
                             toast.success("Nome copiado!");
                           }}
                         >
@@ -208,8 +323,11 @@ export default function ListaMembros() {
                         {membro.email}
                         <button
                           className="icon"
+                          type="button"
+                          title="Copiar e-mail"
+                          aria-label={`Copiar e-mail de ${membro.name || "membro"}`}
                           onClick={() => {
-                            navigator.clipboard.writeText(membro.email);
+                            navigator.clipboard.writeText(membro.email || "");
                             toast.success("E-mail copiado!");
                           }}
                         >
@@ -219,7 +337,7 @@ export default function ListaMembros() {
                     </td>
                     <td>
                       <span
-                        className={`status-${membro.admin ?? "em-analise"}`}
+                        className={`member-role ${membro.admin ? "member-role-admin" : "member-role-observer"}`}
                       >
                         {membro.admin ? "Administrador" : "Observador"}
                       </span>
@@ -259,6 +377,101 @@ export default function ListaMembros() {
           </table>
         </div>
       </div>
+
+      {selectedMember && (
+        <div className="modal-backdrop" onMouseDown={handleCloseMember}>
+          <div
+            className="modal-content member-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="member-modal-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="modal-close-btn"
+              onClick={handleCloseMember}
+              aria-label="Fechar configurações do membro"
+              title="Fechar"
+            >
+              <XIcon size={20} />
+            </button>
+
+            <h2 id="member-modal-title">
+              {selectedMember.name || "Membro sem nome"}
+            </h2>
+            <p className="member-modal-email">{selectedMember.email}</p>
+
+            <form onSubmit={handleSaveRole} className="login-form">
+              <div className="input-group">
+                <label htmlFor="member-name">Nome</label>
+                <input
+                  id="member-name"
+                  type="text"
+                  value={memberName}
+                  onChange={(event) => setMemberName(event.target.value)}
+                  className="login-input"
+                  autoComplete="name"
+                  required
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="member-email">E-mail</label>
+                <input
+                  id="member-email"
+                  type="email"
+                  value={memberEmail}
+                  onChange={(event) => setMemberEmail(event.target.value)}
+                  className="login-input"
+                  autoComplete="email"
+                  required
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="member-role">Nível de Permissão (Função)</label>
+                <select
+                  id="member-role"
+                  value={isAdminRole ? "true" : "false"}
+                  onChange={(event) =>
+                    setIsAdminRole(event.target.value === "true")
+                  }
+                  className="login-input"
+                  disabled={saving}
+                >
+                  <option value="false">Observador</option>
+                  <option value="true">Administrador</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn login-submit-btn member-save-button"
+              >
+                {saving ? "Salvando..." : "Atualizar Permissão"}
+              </button>
+            </form>
+
+            <hr />
+
+            <section className="danger-zone">
+              <h3>Zona de Perigo</h3>
+              <button
+                type="button"
+                onClick={handleDeleteMember}
+                disabled={saving}
+                className="btn member-delete-button"
+              >
+                Revogar Acesso
+              </button>
+            </section>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -204,11 +204,8 @@ export default function ExportarPage() {
 
   if (loading) {
     return (
-      <main className="center-container">
-        <p
-          className="login-text"
-          style={{ fontFamily: "'Space Mono', monospace" }}
-        >
+      <main className="center-container export-loading">
+        <p className="login-text export-loading-text">
           Carregando dados para exportação...
         </p>
       </main>
@@ -228,73 +225,36 @@ export default function ExportarPage() {
   };
 
   return (
-    <main className="center-container">
-      <div className="login-box" style={{ maxWidth: "650px", width: "100%" }}>
+    <main className="center-container export-page">
+      <div className="login-box export-card">
         <h2>Exportar Relatório</h2>
 
-        <div className="login-form">
+        <div className="login-form export-form">
           {/* SEÇÃO 1: SELEÇÃO DE OBSERVADORES */}
           <div className="input-group">
-            <label
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <span
-                style={{ display: "flex", alignItems: "center", gap: "6px" }}
-              >
-                Observadores
-              </span>
-              <label
-                style={{
-                  fontSize: "0.85rem",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  textTransform: "none",
-                }}
-              >
+            <div className="export-section-heading">
+              <span className="label">Observadores</span>
+              <label className="export-select-all">
                 <input
+                  id="select-all-observers"
                   type="checkbox"
                   checked={allSelected}
                   onChange={handleToggleSelectAll}
                 />
                 Selecionar Todos
               </label>
-            </label>
+            </div>
 
-            <div
-              style={{
-                border: "2px solid var(--black)",
-                padding: "10px",
-                maxHeight: "150px",
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-                backgroundColor: "#fff",
-              }}
-            >
+            <div className="export-observers-list">
               {observersList.length === 0 ? (
-                <span style={{ fontSize: "0.9rem", color: "var(--dark-gray)" }}>
+                <span className="export-empty-text">
                   Nenhum observador encontrado.
                 </span>
               ) : (
                 observersList.map((obs) => (
-                  <label
-                    key={obs.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      cursor: "pointer",
-                      fontSize: "0.95rem",
-                    }}
-                  >
+                  <label key={obs.id} className="export-observer-option">
                     <input
+                      id={`observer-${obs.id}`}
                       type="checkbox"
                       checked={selectedObservers.includes(obs.id)}
                       onChange={() => handleObserverCheckboxChange(obs.id)}
@@ -308,34 +268,22 @@ export default function ExportarPage() {
 
           {/* SEÇÃO 2: PERÍODO DE REGISTROS */}
           <div className="input-group">
-            <label
-              style={{ display: "flex", alignItems: "center", gap: "6px" }}
-            >
-              Período dos Registros
-            </label>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "12px",
-              }}
-            >
-              <div>
-                <small style={{ display: "block", marginBottom: "4px" }}>
-                  De:
-                </small>
+            <span className="label">Período dos Registros</span>
+            <div className="export-date-range">
+              <div className="export-date-field">
+                <label htmlFor="start-date">De:</label>
                 <input
+                  id="start-date"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="login-input"
                 />
               </div>
-              <div>
-                <small style={{ display: "block", marginBottom: "4px" }}>
-                  Até:
-                </small>
+              <div className="export-date-field">
+                <label htmlFor="end-date">Até:</label>
                 <input
+                  id="end-date"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
@@ -351,9 +299,11 @@ export default function ExportarPage() {
             <span className="label">Detalhamento do Relatório</span>
             <div className="input-ratio">
               <label
+                htmlFor="export-simple"
                 className={`ratio-label ${exportMode === "simplificado" ? "selected" : ""}`}
               >
                 <input
+                  id="export-simple"
                   type="radio"
                   name="exportMode"
                   value="simplificado"
@@ -364,9 +314,11 @@ export default function ExportarPage() {
               </label>
 
               <label
+                htmlFor="export-advanced"
                 className={`ratio-label ${exportMode === "avancado" ? "selected" : ""}`}
               >
                 <input
+                  id="export-advanced"
                   type="radio"
                   name="exportMode"
                   value="avancado"
@@ -383,14 +335,7 @@ export default function ExportarPage() {
             type="button"
             onClick={handleExportPDF}
             disabled={exporting || candidates.length === 0}
-            className="btn login-submit-btn"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              marginTop: "12px",
-            }}
+            className="btn login-submit-btn export-submit"
           >
             <DownloadSimpleIcon size={20} />
             {exporting ? "Gerando PDF..." : "Exportar PDF"}

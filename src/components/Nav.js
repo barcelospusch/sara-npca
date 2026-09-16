@@ -3,6 +3,7 @@
 import { auth, database } from "@/firebase";
 import {
   ArrowCounterClockwiseIcon,
+  BackspaceIcon,
   ExportIcon,
   PlusCircleIcon,
   ShieldCheckIcon,
@@ -121,13 +122,39 @@ export default function Navbar() {
     }
   };
 
+  const handleResetCounters = async () => {
+    setAligning(true);
+    const toastId = toast.loading("Zerando contadores...");
+
+    try {
+      const configRef = ref(database, "config");
+
+      await runTransaction(configRef, (config) => ({
+        ...(config || {}),
+        lastCodeNumber: 0,
+        tempCodeNumber: 0,
+      }));
+
+      setLastCodeNumber(0);
+      setTempCodeNumber(0);
+      toast.success("Contadores zerados com sucesso!", { id: toastId });
+    } catch (error) {
+      console.error("Erro ao zerar contadores:", error);
+      toast.error("Erro ao zerar contadores.", { id: toastId });
+    } finally {
+      setAligning(false);
+    }
+  };
+
   return (
     <>
-      <nav>
-        <div>
-          <Link href="/">SARA-NPCA</Link>
+      <nav className="site-nav" aria-label="Navegação principal">
+        <div className="site-nav-brand">
+          <Link href="/" className="site-nav-logo">
+            SARA-NPCA
+          </Link>
         </div>
-        <div>
+        <div className="site-nav-actions">
           {!loading && (
             <>
               {user ? (
@@ -142,8 +169,10 @@ export default function Navbar() {
                         <span>Painel</span>
                       </Link>
                       <button
+                        type="button"
                         className="btn icon secondary"
                         title="Atualizar sequência de códigos"
+                        aria-label="Atualizar sequência de códigos"
                         onClick={handleOpenModal}
                       >
                         <ArrowCounterClockwiseIcon />
@@ -155,11 +184,22 @@ export default function Navbar() {
                     <PlusCircleIcon/>
                     <span>Registrar</span>
                   </Link>
-                  <Link href="/exportar" className="btn icon" title="Exportar relatório">
+                  <Link
+                    href="/exportar"
+                    className="btn icon"
+                    title="Exportar relatório"
+                    aria-label="Exportar relatório"
+                  >
                     <ExportIcon/>
                   </Link>
                   <span className="divider" />
-                  <button onClick={handleLogout} className="icon" title="Sair">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="icon"
+                    title="Sair"
+                    aria-label="Sair"
+                  >
                     <SignOutIcon />
                   </button>
                 </>
@@ -178,77 +218,72 @@ export default function Navbar() {
 
       {/* MODAL DE ALINHAMENTO DE CONTADORES */}
       {isModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-content">
+        <div
+          className="modal-backdrop"
+          onMouseDown={() => setIsModalOpen(false)}
+        >
+          <div
+            className="modal-content counter-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="counter-modal-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <button
+              type="button"
               className="modal-close-btn"
               onClick={() => setIsModalOpen(false)}
+              title="Fechar"
+              aria-label="Fechar sequência de códigos"
             >
               <XIcon size={20} />
             </button>
 
-            <h2>Sequência de Códigos</h2>
+            <h2 id="counter-modal-title">Sequência de Códigos</h2>
 
             {loadingCounters ? (
-              <p
-                style={{
-                  marginBlock: "24px",
-                  textAlign: "center",
-                  fontFamily: "'Space Mono', monospace",
-                }}
-              >
+              <p className="counter-loading">
                 Carregando dados do servidor...
               </p>
             ) : (
               <>
-                <div
-                  className="modal-infos"
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "12px",
-                    marginBlock: "20px",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "12px",
-                      border: "2px solid var(--black)"
-                    }}
-                  >
+                <div className="modal-infos counter-infos">
+                  <div className="counter-info">
                     <span>Último registrado:</span>
-                    <strong style={{ fontFamily: "'Space Mono', monospace" }}>
+                    <strong>
                       NPC{String(lastCodeNumber).padStart(4, "0")} ({lastCodeNumber})
                     </strong>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "12px",
-                      border: "2px solid var(--black)"
-                    }}
-                  >
+                  <div className="counter-info">
                     <span>Contador Temporário:</span>
-                    <strong style={{ fontFamily: "'Space Mono', monospace" }}>
+                    <strong>
                       NPC{String(tempCodeNumber).padStart(4, "0")} ({tempCodeNumber})
                     </strong>
                   </div>
                 </div>
 
-                <button
-                  onClick={handleAlign}
-                  disabled={aligning || tempCodeNumber === lastCodeNumber}
-                  className="btn login-submit-btn"
-                >
-                  <ArrowCounterClockwiseIcon size={20} />
-                  {aligning ? "Alinhando..." : "Alinhar Contadores"}
-                </button>
+                <div className="counter-actions">
+                  <button
+                    type="button"
+                    className="btn login-submit-btn icon"
+                    onClick={handleResetCounters}
+                    disabled={aligning}
+                    title="Zerar contadores"
+                    aria-label="Zerar contadores"
+                  >
+                    <BackspaceIcon size={20} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAlign}
+                    disabled={aligning || tempCodeNumber === lastCodeNumber}
+                    className="btn login-submit-btn"
+                  >
+                    <ArrowCounterClockwiseIcon size={20} />
+                    {aligning ? "Alinhando..." : "Alinhar Contadores"}
+                  </button>
+                </div>
               </>
             )}
           </div>

@@ -148,18 +148,8 @@ export default function EditarCandidato({ params }) {
 
   if (loadingAuth || loadingData) {
     return (
-      <main
-        className="center-container"
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <p
-          className="login-text"
-          style={{ fontFamily: "'Space Mono', monospace" }}
-        >
+      <main className="center-container candidate-loading">
+        <p className="login-text candidate-loading-text">
           Buscando registro do candidato...
         </p>
       </main>
@@ -174,29 +164,14 @@ export default function EditarCandidato({ params }) {
     return `${day}/${month}/${year}`;
   };
 
-  const getStatusOptionStyle = (value) => {
-    const selected = status === value;
-
-    return {
-      backgroundColor: selected ? "rgba(255, 255, 255, 0.16)" : "transparent",
-      border: selected
-        ? "1px solid rgba(255, 255, 255, 0.6)"
-        : "1px solid transparent",
-      color: selected ? "#ffffff" : "var(--text-color, #fff)",
-      boxShadow: selected ? "0 0 0 2px rgba(255, 255, 255, 0.15)" : "none",
-      transition: "all 0.2s ease",
-    };
-  };
-
   return (
-    <main>
-      <header style={{ justifyContent: "space-between", alignItems: "center" }}>
+    <main className="candidate-page">
+      <header className="candidate-header">
         <div></div>
-        <div style={{ backgroundColor: "transparent" }}>
+        <div className="candidate-header-actions">
           <Link
             href="/"
-            className="btn secondary"
-            style={{ fontSize: "14px", textDecoration: "none" }}
+            className="btn secondary candidate-back-button"
           >
             <ArrowLeftIcon />
             Voltar ao Dashboard
@@ -204,48 +179,25 @@ export default function EditarCandidato({ params }) {
         </div>
       </header>
 
-      <div className="container" style={{ marginTop: "24px" }}>
-        <div
-          className="login-box"
-          style={{ maxWidth: "600px", margin: "0 auto", padding: "30px" }}
-        >
-          <div className="code-highlight-banner">
+      <div className="container candidate-container">
+        <div className="login-box candidate-card">
+          <div className="code-highlight-banner candidate-code">
             <strong>{codigo}</strong>
           </div>
           {/* Informações de metadados não editáveis (Contexto para o Admin) */}
-          <div
-            style={{
-              marginBottom: "24px",
-              borderBottom: "1px solid #333",
-              paddingBottom: "16px",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
-            <div>
-              <span
-                style={{
-                  fontSize: "12px",
-                  color: "var(--dark-gray)",
-                  display: "block",
-                }}
-              >
-                Observador
-              </span>
+          <div className="candidate-meta">
+            <div className="candidate-meta-item">
+              <span className="candidate-meta-label">Observador</span>
               <strong>
-                <a href={`/admin/membros/${candidatoData?.observerUid}`}>
+                <Link
+                  href={`/admin/membros?uid=${encodeURIComponent(candidatoData?.observerUid || "")}`}
+                >
                   {candidatoData?.observer}
-                </a>
+                </Link>
               </strong>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <span
-                style={{
-                  fontSize: "12px",
-                  color: "var(--dark-gray)",
-                  display: "block",
-                }}
-              >
+            <div className="candidate-meta-item candidate-meta-date">
+              <span className="candidate-meta-label">
                 Data de Registro
               </span>
               <span>{formatDate(candidatoData?.date)}</span>
@@ -377,23 +329,18 @@ export default function EditarCandidato({ params }) {
                 readOnly
                 value={mpcReport || "Nenhum relatório cadastrado."}
                 rows={10}
-                className="login-input"
-                style={{
-                  fontFamily: "'Space Mono', monospace",
-                  resize: "vertical",
-                  width: "100%",
-                  minHeight: "200px",
-                }}
+                className="login-input candidate-report"
               />
             </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div className="candidate-actions">
               <button
                 type="button"
                 onClick={handleDeleteCandidato}
                 disabled={saving || deleting}
-                className="btn icon login-submit-btn"
-                style={{ flex: 0.2 }}
+                className="btn icon login-submit-btn candidate-delete-button"
+                title="Excluir candidato"
+                aria-label="Excluir candidato"
               >
                 <TrashIcon />
               </button>
@@ -416,16 +363,14 @@ export default function EditarCandidato({ params }) {
                     });
                 }}
                 disabled={saving || deleting}
-                className="btn login-submit-btn"
-                style={{ flex: 0.4 }}
+                className="btn login-submit-btn candidate-copy-button"
               >
                 Copiar MPC Report
               </button>
               <button
                 type="submit"
                 disabled={saving || deleting}
-                className="btn login-submit-btn"
-                style={{ flex: 0.4 }}
+                className="btn login-submit-btn candidate-save-button"
               >
                 {saving ? "Salvando Alterações..." : "Salvar Modificações"}
               </button>

@@ -151,18 +151,19 @@ export default function RegistrarCandidato() {
   };
 
   return (
-    <main className="center-container">
-      <div className="login-box">
+    <main className="center-container registrar-page">
+      <div className="login-box registrar-card">
         <h2>Registrar Candidato</h2>
 
-        <div className="code-highlight-banner">
+        <div className="code-highlight-banner registrar-code" aria-live="polite">
           <strong>{nextCode}</strong>
         </div>
 
-        <form onSubmit={handleRegister} className="login-form">
+        <form onSubmit={handleRegister} className="login-form registrar-form">
           <div className="input-group">
-            <label>Set</label>
+            <label htmlFor="set">Set</label>
             <input
+              id="set"
               type="text"
               value={set}
               onChange={(e) => setSet(e.target.value)}
@@ -173,8 +174,9 @@ export default function RegistrarCandidato() {
           </div>
 
           <div className="input-group">
-            <label>Quadrante</label>
+            <label htmlFor="quadrant">Quadrante</label>
             <input
+              id="quadrant"
               type="text"
               value={quadrant}
               onChange={(e) => setQuadrant(e.target.value)}
@@ -218,8 +220,9 @@ export default function RegistrarCandidato() {
           </div>
 
           <div className="input-group">
-            <label>MPC Report</label>
+            <label htmlFor="mpc-report">MPC Report</label>
             <textarea
+              id="mpc-report"
               value={mpcReport}
               onChange={(e) => setMpcReport(e.target.value)}
               className="login-input"
@@ -229,8 +232,8 @@ export default function RegistrarCandidato() {
           </div>
 
           <div className="input-group">
-            <label>Observador</label>
-            <div className="static-observer-field">
+            <span className="label">Observador</span>
+            <div className="static-observer-field registrar-observer" aria-live="polite">
               {observer || "Carregando perfil do DB..."}
             </div>
           </div>
@@ -238,7 +241,7 @@ export default function RegistrarCandidato() {
           <button
             type="submit"
             disabled={loading || !observerUid || !assignedNumber}
-            className="btn login-submit-btn"
+            className="btn login-submit-btn registrar-submit"
           >
             {loading ? "Registrando..." : "Registrar"}
           </button>

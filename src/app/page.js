@@ -7,16 +7,9 @@ import { ref, onValue, get } from "firebase/database";
 import { auth, database } from "@/firebase";
 import toast from "react-hot-toast";
 import {
-  ApertureIcon,
-  CalendarIcon,
   CopyIcon,
   FileTextIcon,
-  GearSixIcon,
-  GridFourIcon,
-  IdentificationBadgeIcon,
-  PackageIcon,
-  SealIcon,
-  TagSimpleIcon,
+  FunnelIcon,
   XIcon,
 } from "@phosphor-icons/react";
 
@@ -26,9 +19,27 @@ export default function Home() {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
   const [selectedMpcItem, setSelectedMpcItem] = useState(null);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    sort: "code-desc",
+    observers: [],
+    startDate: "",
+    endDate: "",
+    set: "",
+    ps: "",
+    status: "",
+  });
+  const [draftFilters, setDraftFilters] = useState(filters);
 
-  const LIST = [];
-  const displayList = list.length > 0 ? list : LIST;
+  const defaultFilters = {
+    sort: "code-desc",
+    observers: [],
+    startDate: "",
+    endDate: "",
+    set: "",
+    ps: "",
+    status: "",
+  };
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
@@ -83,6 +94,82 @@ export default function Home() {
     return () => unsubscribeData();
   }, []);
 
+  const observerOptions = Array.from(
+    new Map(
+      list
+        .filter((item) => item.observer)
+        .map((item) => [item.observerUid || item.observer, item.observer]),
+    ),
+  )
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const displayList = [...list]
+    .filter((item) => {
+      const observerId = item.observerUid || item.observer;
+      const normalizedSet = (item.set || "").toLowerCase();
+
+      return (
+        (filters.observers.length === 0 ||
+          filters.observers.includes(observerId)) &&
+        (!filters.startDate || item.date >= filters.startDate) &&
+        (!filters.endDate || item.date <= filters.endDate) &&
+        (!filters.set || normalizedSet.includes(filters.set.toLowerCase())) &&
+        (!filters.ps || item.ps === filters.ps) &&
+        (!filters.status || item.status === filters.status)
+      );
+    })
+    .sort((a, b) => {
+      if (filters.sort === "date-asc") {
+        return (a.date || "").localeCompare(b.date || "");
+      }
+      if (filters.sort === "date-desc") {
+        return (b.date || "").localeCompare(a.date || "");
+      }
+      if (filters.sort === "code-asc") {
+        return (a.code || "").localeCompare(b.code || "");
+      }
+      return (b.code || "").localeCompare(a.code || "");
+    });
+
+  const activeFilterCount = [
+    filters.observers.length > 0,
+    Boolean(filters.startDate),
+    Boolean(filters.endDate),
+    Boolean(filters.set),
+    Boolean(filters.ps),
+    Boolean(filters.status),
+  ].filter(Boolean).length;
+
+  const openFilterModal = () => {
+    setDraftFilters({ ...filters, observers: [...filters.observers] });
+    setIsFilterModalOpen(true);
+  };
+
+  const closeFilterModal = () => {
+    setDraftFilters({ ...filters, observers: [...filters.observers] });
+    setIsFilterModalOpen(false);
+  };
+
+  const applyFilters = (event) => {
+    event.preventDefault();
+    setFilters({ ...draftFilters, observers: [...draftFilters.observers] });
+    setIsFilterModalOpen(false);
+  };
+
+  const clearFilters = () => {
+    setDraftFilters({ ...defaultFilters, observers: [] });
+  };
+
+  const toggleObserver = (observerId) => {
+    setDraftFilters((current) => ({
+      ...current,
+      observers: current.observers.includes(observerId)
+        ? current.observers.filter((id) => id !== observerId)
+        : [...current.observers, observerId],
+    }));
+  };
+
   const totalCandidatos = displayList.length;
   const emAnalise = displayList.filter(
     (item) => item.status === "Em análise",
@@ -114,19 +201,8 @@ export default function Home() {
 
   if (loadingAuth || loadingData) {
     return (
-      <main
-        className="center-container"
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "100vh",
-        }}
-      >
-        <p
-          className="login-text"
-          style={{ fontFamily: "'Space Mono', monospace" }}
-        >
+      <main className="center-container dashboard-loading">
+        <p className="login-text dashboard-loading-text">
           Sincronizando dados com o servidor...
         </p>
       </main>
@@ -142,8 +218,8 @@ export default function Home() {
   };
 
   return (
-    <main>
-      <header>
+    <main className="dashboard">
+      <header className="dashboard-summary" aria-label="Resumo dos candidatos">
         <div className="box box-total">
           <b>{totalCandidatos}</b>
           <small>Total de candidatos</small>
@@ -162,8 +238,26 @@ export default function Home() {
         </div>
       </header>
 
+      <div className="dashboard-toolbar">
+        <span className="dashboard-results">
+          {displayList.length} de {list.length} candidatos
+        </span>
+        <button
+          type="button"
+          className="btn secondary dashboard-filter-button"
+          onClick={openFilterModal}
+          aria-label="Abrir filtros da tabela"
+        >
+          <FunnelIcon size={18} />
+          Filtros
+          {activeFilterCount > 0 && (
+            <span className="dashboard-filter-count">{activeFilterCount}</span>
+          )}
+        </button>
+      </div>
+
       <div className="container">
-        <div className="table-responsive">
+        <div className="table-responsive dashboard-table">
           <table className="table">
             <thead>
               <tr>
@@ -214,11 +308,7 @@ export default function Home() {
                 <tr>
                   <td
                     colSpan={8}
-                    style={{
-                      textAlign: "center",
-                      paddingBlock: "30px",
-                      color: "var(--dark-gray)",
-                    }}
+                    className="dashboard-empty"
                   >
                     Nenhum candidato a asteroide registrado até o momento.
                   </td>
@@ -243,7 +333,9 @@ export default function Home() {
                     <td>{item.ps}</td>
                     <td>
                       {isAdmin ? (
-                        <Link href={`/admin/membros/${item.observerUid}`}>
+                        <Link
+                          href={`/admin/membros?uid=${encodeURIComponent(item.observerUid || "")}`}
+                        >
                           {item.observer}
                         </Link>
                       ) : (
@@ -282,10 +374,197 @@ export default function Home() {
         </div>
       </div>
 
+      {isFilterModalOpen && (
+        <div className="modal-backdrop" onMouseDown={closeFilterModal}>
+          <div
+            className="modal-content dashboard-filter-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dashboard-filter-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="modal-close-btn"
+              onClick={closeFilterModal}
+              title="Fechar filtros"
+              aria-label="Fechar filtros"
+            >
+              <XIcon size={20} />
+            </button>
+
+            <h2 id="dashboard-filter-title">Filtros da tabela</h2>
+
+            <form onSubmit={applyFilters} className="dashboard-filter-form">
+              <div className="input-group">
+                <label htmlFor="dashboard-sort">Ordem de listagem</label>
+                <select
+                  id="dashboard-sort"
+                  className="login-input"
+                  value={draftFilters.sort}
+                  onChange={(event) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      sort: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="code-desc">Código: mais recentes</option>
+                  <option value="code-asc">Código: mais antigos</option>
+                  <option value="date-desc">Data: mais recentes</option>
+                  <option value="date-asc">Data: mais antigos</option>
+                </select>
+              </div>
+
+              <div className="input-group">
+                <span className="label">Observadores</span>
+                <div className="dashboard-observer-options">
+                  {observerOptions.length === 0 ? (
+                    <span className="dashboard-filter-empty">
+                      Nenhum observador encontrado.
+                    </span>
+                  ) : (
+                    observerOptions.map((observer) => (
+                      <label
+                        key={observer.id}
+                        className="dashboard-filter-check"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={draftFilters.observers.includes(observer.id)}
+                          onChange={() => toggleObserver(observer.id)}
+                        />
+                        {observer.name}
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="input-group">
+                <span className="label">Período de registro</span>
+                <div className="dashboard-date-range">
+                  <div className="dashboard-date-field">
+                    <label htmlFor="dashboard-start-date">De</label>
+                    <input
+                      id="dashboard-start-date"
+                      type="date"
+                      className="login-input"
+                      value={draftFilters.startDate}
+                      onChange={(event) =>
+                        setDraftFilters((current) => ({
+                          ...current,
+                          startDate: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="dashboard-date-field">
+                    <label htmlFor="dashboard-end-date">Até</label>
+                    <input
+                      id="dashboard-end-date"
+                      type="date"
+                      className="login-input"
+                      value={draftFilters.endDate}
+                      onChange={(event) =>
+                        setDraftFilters((current) => ({
+                          ...current,
+                          endDate: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="dashboard-set">Set</label>
+                <input
+                  id="dashboard-set"
+                  type="search"
+                  className="login-input"
+                  placeholder="Buscar pelo set"
+                  value={draftFilters.set}
+                  onChange={(event) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      set: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="input-group">
+                <span className="label">PS</span>
+                <div className="input-ratio">
+                  {[
+                    ["", "Todos"],
+                    ["PS1", "PS1"],
+                    ["PS2", "PS2"],
+                  ].map(([value, label]) => (
+                    <label
+                      key={label}
+                      className={`ratio-label ${draftFilters.ps === value ? "selected" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name="dashboard-ps"
+                        value={value}
+                        checked={draftFilters.ps === value}
+                        onChange={(event) =>
+                          setDraftFilters((current) => ({
+                            ...current,
+                            ps: event.target.value,
+                          }))
+                        }
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="dashboard-status">Status</label>
+                <select
+                  id="dashboard-status"
+                  className="login-input"
+                  value={draftFilters.status}
+                  onChange={(event) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      status: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Todos</option>
+                  <option value="Em análise">Em análise</option>
+                  <option value="Preliminar">Preliminar</option>
+                  <option value="Provisório">Provisório</option>
+                </select>
+              </div>
+
+              <div className="dashboard-filter-actions">
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={clearFilters}
+                >
+                  Limpar filtros
+                </button>
+                <button type="submit" className="btn">
+                  Aplicar filtros
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DE VISUALIZAÇÃO DO MPC REPORT */}
       {selectedMpcItem && (
         <div className="modal-backdrop">
-          <div className="modal-content">
+          <div className="modal-content report-modal">
             <button
               className="modal-close-btn"
               onClick={() => setSelectedMpcItem(null)}
@@ -295,25 +574,19 @@ export default function Home() {
 
             <h2 className="modal-code">{selectedMpcItem.code} - MPC Report</h2>
 
-            <div className="modal-infos" style={{ marginTop: "16px" }}>
+            <div className="modal-infos report-modal-infos">
               <textarea
                 readOnly
                 value={
                   selectedMpcItem.mpcReport || "Nenhum relatório cadastrado."
                 }
                 rows={10}
-                className="login-input"
-                style={{
-                  fontFamily: "'Space Mono', monospace",
-                  resize: "vertical",
-                  width: "100%",
-                  minHeight: "200px",
-                }}
+                className="login-input report-textarea"
               />
             </div>
 
             <button
-              className="btn login-submit-btn"
+              className="btn login-submit-btn report-copy-btn"
               onClick={handleCopyMpcReport}
             >
               <CopyIcon size={20} />
