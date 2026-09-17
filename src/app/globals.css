@@ -130,7 +130,7 @@ textarea:focus-visible {
   }
 
   .site-nav-actions {
-    a.btn {
+    a.btn, button {
       span{
         display: none;
       }
