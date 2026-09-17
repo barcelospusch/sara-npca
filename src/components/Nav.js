@@ -211,9 +211,7 @@ export default function Navbar() {
                     className="secondary"
                     title="Sair"
                     aria-label="Sair"
-                  >
-                    <span>Sair</span>
-                  </button>
+                  >Sair</button>
                 </>
               ) : (
                 <>
