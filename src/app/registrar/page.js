@@ -169,7 +169,7 @@ export default function RegistrarCandidato() {
               onChange={(e) => setSet(e.target.value)}
               required
               className="login-input"
-              placeholder="Ex: XY49 p00"
+              placeholder="Ex: 49-00"
             />
           </div>
 

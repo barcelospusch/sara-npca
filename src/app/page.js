@@ -320,12 +320,26 @@ export default function Home() {
           type="button"
           className="btn secondary dashboard-filter-button"
           onClick={openFilterModal}
-          aria-label="Abrir filtros da tabela"
+          aria-label={`Abrir filtros da tabela${
+            activeFilterCount > 0
+              ? ` (${activeFilterCount} filtro${activeFilterCount === 1 ? "" : "s"} ativo${activeFilterCount === 1 ? "" : "s"})`
+              : ""
+          }`}
+          title={
+            activeFilterCount > 0
+              ? `${activeFilterCount} filtro${activeFilterCount === 1 ? "" : "s"} ativo${activeFilterCount === 1 ? "" : "s"}`
+              : "Nenhum filtro ativo"
+          }
         >
           <FunnelIcon size={18} />
           Filtros
           {activeFilterCount > 0 && (
-            <span className="dashboard-filter-count">{activeFilterCount}</span>
+            <span
+              className="dashboard-filter-count"
+              aria-label={`${activeFilterCount} filtro${activeFilterCount === 1 ? "" : "s"} ativo${activeFilterCount === 1 ? "" : "s"}`}
+            >
+              {activeFilterCount}
+            </span>
           )}
         </button>
       </div>
@@ -395,7 +409,7 @@ export default function Home() {
                     <td>
                       {isAdmin ? (
                         <Link
-                          href={`/admin/membros?uid=${encodeURIComponent(item.observerUid || "")}`}
+                          href={`/membros?uid=${encodeURIComponent(item.observerUid || "")}`}
                         >
                           {item.observer}
                         </Link>
@@ -659,7 +673,7 @@ export default function Home() {
                     <span className="candidate-meta-label">Observador</span>
                     <strong>
                       <Link
-                        href={`/admin/membros?uid=${encodeURIComponent(selectedMpcItem.observerUid || "")}`}
+                        href={`/membros?uid=${encodeURIComponent(selectedMpcItem.observerUid || "")}`}
                         onClick={() => setSelectedMpcItem(null)}
                       >
                         {selectedMpcItem.observer || "-"}
@@ -686,7 +700,7 @@ export default function Home() {
                     required
                     disabled={savingCandidate || deletingCandidate}
                     className="login-input"
-                    placeholder="Ex: XY49 p00"
+                    placeholder="Ex: 49-00"
                   />
                 </div>
 

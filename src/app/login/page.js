@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { ref, update, serverTimestamp, get } from "firebase/database";
 import { auth, database } from "@/firebase"; 
@@ -15,22 +13,9 @@ import toast from "react-hot-toast";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmEmail, setConfirmEmail] = useState("");
-  const [method, setMethod] = useState("password"); 
-  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      const emailForSignIn = window.localStorage.getItem("emailForSignIn");
-      if (!emailForSignIn) {
-        setShowEmailConfirmation(true);
-      } else {
-        processEmailLinkLogin(emailForSignIn);
-      }
-    }
-  }, []);
 
   // FUNÇÃO CORRIGIDA: Não reseta o Admin e mantém a chave 'nome' consistente
   const saveUserData = async (user) => {
@@ -65,42 +50,6 @@ export default function Login() {
     }
   };
 
-  const processEmailLinkLogin = (emailToAuth) => {
-    setLoading(true);
-    const toastId = toast.loading("Confirmando seu link de acesso...");
-
-    signInWithEmailLink(auth, emailToAuth, window.location.href)
-      .then(async (result) => {
-        window.localStorage.removeItem("emailForSignIn");
-        
-        await saveUserData(result.user);
-
-        toast.success("Autenticado com sucesso! Redirecionando...", {
-          id: toastId,
-        });
-        router.push("/");
-      })
-      .catch((error) => {
-        console.error(error);
-        toast.error("Erro ao validar o link ou link expirado.", {
-          id: toastId,
-        });
-      })
-      .finally(() => {
-        setLoading(false);
-        setShowEmailConfirmation(false);
-      });
-  };
-
-  const handleManualEmailConfirmation = (e) => {
-    e.preventDefault();
-    if (!confirmEmail) {
-      toast.error("Por favor, digite o seu e-mail.");
-      return;
-    }
-    processEmailLinkLogin(confirmEmail);
-  };
-
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -127,26 +76,24 @@ export default function Login() {
     }
   };
 
-  const handleLinkLogin = async (e) => {
+  const handlePasswordReset = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const toastId = toast.loading("Enviando link...");
-
-    const actionCodeSettings = {
-      url: window.location.origin + "/login",
-      handleCodeInApp: true,
-    };
+    const toastId = toast.loading("Enviando instruções...");
 
     try {
-      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-      window.localStorage.setItem("emailForSignIn", email);
-      toast.success("Link de login enviado! Verifique sua caixa de entrada.", {
+      await sendPasswordResetEmail(auth, email);
+      toast.success("Instruções de recuperação enviadas para seu e-mail.", {
         id: toastId,
         duration: 5000,
       });
+      setShowPasswordReset(false);
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao enviar o e-mail de acesso.", { id: toastId });
+      const errorMsg = error.code === "auth/user-not-found"
+        ? "Não encontramos uma conta com este e-mail."
+        : "Não foi possível enviar as instruções de recuperação.";
+      toast.error(errorMsg, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -156,23 +103,20 @@ export default function Login() {
     <main className="login-page">
       <div className="center-container login-layout">
         <div className="login-box login-card">
-          {showEmailConfirmation ? (
-            <form
-              onSubmit={handleManualEmailConfirmation}
-              className="login-form login-confirmation"
-            >
-              <h2>Confirme seu e-mail</h2>
+          <h2 className="login-title">Acesso ao SARA</h2>
+
+          {showPasswordReset ? (
+            <form onSubmit={handlePasswordReset} className="login-form">
               <p className="login-text">
-                Você abriu o link em uma sessão diferente. Insira o e-mail onde
-                recebeu o link para confirmar:
+                Informe seu e-mail para receber as instruções de recuperação.
               </p>
               <div className="input-group">
-                <label htmlFor="confirmation-email">E-mail de Confirmação</label>
+                <label htmlFor="reset-email">E-mail</label>
                 <input
-                  id="confirmation-email"
+                  id="reset-email"
                   type="email"
-                  value={confirmEmail}
-                  onChange={(e) => setConfirmEmail(e.target.value)}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   className="login-input"
                   placeholder="nome@exemplo.com"
@@ -183,36 +127,18 @@ export default function Login() {
                 disabled={loading}
                 className="btn login-submit-btn"
               >
-                {loading ? "Confirmando..." : "Concluir Login"}
+                {loading ? "Enviando..." : "Enviar instruções"}
+              </button>
+              <button
+                type="button"
+                className="login-secondary-btn"
+                onClick={() => setShowPasswordReset(false)}
+              >
+                Voltar para o login
               </button>
             </form>
           ) : (
-            <>
-              <h2 className="login-title">Acesso ao SARA</h2>
-
-              <div className="login-tabs" role="tablist" aria-label="Método de acesso">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={method === "password"}
-                  onClick={() => setMethod("password")}
-                  className={`login-tab-btn ${method === "password" ? "active" : ""}`}
-                >
-                  Senha
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={method === "link"}
-                  onClick={() => setMethod("link")}
-                  className={`login-tab-btn ${method === "link" ? "active" : ""}`}
-                >
-                  Link por E-mail
-                </button>
-              </div>
-
-              {method === "password" ? (
-                <form onSubmit={handlePasswordLogin} className="login-form">
+            <form onSubmit={handlePasswordLogin} className="login-form">
                   <div className="input-group">
                     <label htmlFor="password-email">E-mail</label>
                     <input
@@ -242,31 +168,14 @@ export default function Login() {
                   >
                     {loading ? "Entrando..." : "Entrar com Senha"}
                   </button>
-                </form>
-              ) : (
-                <form onSubmit={handleLinkLogin} className="login-form">
-                  <div className="input-group">
-                    <label htmlFor="link-email">E-mail</label>
-                    <input
-                      id="link-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="login-input"
-                      placeholder="nome@exemplo.com"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="btn login-submit-btn"
-                  >
-                    {loading ? "Enviando..." : "Enviar Link de Acesso"}
-                  </button>
-                </form>
-              )}
-            </>
+              <button
+                type="button"
+                className="login-secondary-btn"
+                onClick={() => setShowPasswordReset(true)}
+              >
+                Esqueci minha senha
+              </button>
+            </form>
           )}
         </div>
       </div>

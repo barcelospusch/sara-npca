@@ -124,6 +124,9 @@ textarea:focus-visible {
 }
 
 @media (width<=850px) {
+  .site-nav-logo{
+    font-size: 0.75rem;
+  }
   .site-nav-brand,
   .site-nav-actions {
     gap: 8px;
@@ -206,16 +209,6 @@ main {
   margin: 4px 0 8px;
   font-size: clamp(2.4rem, 6vw, 4.5rem);
   line-height: 0.95;
-}
-
-.statistics-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--dark-gray);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 1px;
 }
 
 .statistics-intro {
@@ -1440,6 +1433,17 @@ textarea.login-input {
 .login-submit-btn:active {
   box-shadow: 0px 0px 0px var(--black);
   transform: translate(2px, 2px);
+}
+
+.login-secondary-btn {
+  align-self: center;
+  background: none;
+  border: 0;
+  color: var(--black);
+  cursor: pointer;
+  font-family: "Space Mono", monospace;
+  font-size: 0.85rem;
+  text-decoration: underline;
 }
 
 .code-highlight-banner {

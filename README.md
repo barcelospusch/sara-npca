@@ -1,6 +1,6 @@
-# SARA-NPCA v0.2.3
+# SARA-NPCA v0.2.4
 Sistema de Administração e Registro de Asteroides do Núcleo de Pesquisa e Caça de Asteroides
 
 ## Notas da versão
-- Modais atualizados para candidato e observador
-- Admin: nova página de visualização de estatísticas
+- Ajuste dos paths das páginas
+- Login: correção de método
