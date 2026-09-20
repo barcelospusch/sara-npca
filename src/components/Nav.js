@@ -162,11 +162,11 @@ export default function Navbar() {
                   {isAdmin && (
                     <>
                       <Link
-                        href="/admin/membros"
+                        href="/membros"
                         className="btn secondary withicon"
                       >
                         <ShieldCheckIcon />
-                        <span>Painel</span>
+                        <span>Membros</span>
                       </Link>
                       <button
                         type="button"
@@ -179,13 +179,13 @@ export default function Navbar() {
                         <span>Align</span>
                       </button>
                       <Link
-                        href="/estatisticas"
+                        href="/painel"
                         className="btn withicon secondary"
-                        title="Estatísticas"
-                        aria-label="Estatísticas"
+                        title="Painel"
+                        aria-label="Painel"
                       >
                         <ChartBarIcon size={20} />
-                        <span>Estatísticas</span>
+                        <span>Painel</span>
                       </Link>
                       <span className="divider" />
                     </>

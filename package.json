@@ -1,6 +1,6 @@
 {
   "name": "sara-npca",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -13,7 +13,7 @@
     "firebase": "^12.16.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
-    "next": "16.2.10",
+    "next": "^16.3.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hot-toast": "^2.6.0"
