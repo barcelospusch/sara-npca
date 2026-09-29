@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  signOut,
 } from "firebase/auth";
 import { ref, update, serverTimestamp, get } from "firebase/database";
 import { auth, database } from "@/firebase"; 
@@ -17,36 +18,24 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // FUNÇÃO CORRIGIDA: Não reseta o Admin e mantém a chave 'nome' consistente
   const saveUserData = async (user) => {
     try {
       const userRef = ref(database, `usuarios/${user.uid}`);
-      
-      // Busca se o usuário já tem um registro salvo no Database
       const snapshot = await get(userRef);
-      
-      let updates = {};
 
-      if (snapshot.exists()) {
-        // Se o usuário já existe, só atualizamos o carimbo de último login e o e-mail
-        updates = {
-          lastLogin: serverTimestamp(),
-          email: user.email,
-        };
-      } else {
-        // Se for um usuário completamente novo, definimos os valores padrão de cadastro
-        updates = {
-          uid: user.uid,
-          email: user.email,
-          name: user.displayName || "Usuário sem Nome", // Corrigido de 'name' para 'nome'
-          lastLogin: serverTimestamp(),
-          admin: false // Só ganha false se for a primeira criação da conta
-        };
+      if (!snapshot.exists()) {
+        await signOut(auth);
+        throw new Error("Conta não cadastrada por um administrador.");
       }
-      
-      await update(userRef, updates);
+
+      await update(userRef, {
+        lastLogin: serverTimestamp(),
+        email: user.email,
+      });
     } catch (error) {
       console.error("Erro ao sincronizar dados do usuário no Realtime Database:", error);
+      await signOut(auth);
+      throw error;
     }
   };
 
@@ -69,6 +58,12 @@ export default function Login() {
         errorMsg = "E-mail ou senha incorretos.";
       } else if (error.code === "auth/missing-password") {
         errorMsg = "Por favor, insira a senha.";
+      } else if (error.message === "Conta não cadastrada por um administrador.") {
+        errorMsg = error.message;
+      } else if (error.code?.startsWith("auth/")) {
+        errorMsg = "E-mail ou senha incorretos.";
+      } else {
+        errorMsg = "Não foi possível validar seu cadastro. Tente novamente.";
       }
       toast.error(errorMsg, { id: toastId });
     } finally {

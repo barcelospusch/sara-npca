@@ -2,7 +2,7 @@
 
 import { auth, database } from "@/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { get, ref, runTransaction, set as setDb } from "firebase/database";
+import { get, push, ref, runTransaction, set as setDb } from "firebase/database";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -10,16 +10,19 @@ import toast from "react-hot-toast";
 export default function RegistrarCandidato() {
   const [set, setSet] = useState("");
   const [quadrant, setQuadrant] = useState("");
+  const [mpcWithoutMovingObject, setMpcWithoutMovingObject] = useState(null);
   const [ps, setPs] = useState("PS1");
   const [mpcReport, setMpcReport] = useState("");
   const [observer, setObserver] = useState("");
   const [observerUid, setObserverUid] = useState("");
   const [nextCode, setNextCode] = useState("NPC....");
   const [assignedNumber, setAssignedNumber] = useState(null);
+  const [assignedXyzNumber, setAssignedXyzNumber] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // Ref de controle para evitar a execução duplicada do React Strict Mode
   const hasReservedRef = useRef(false);
+  const hasReservedXyzRef = useRef(false);
 
   const router = useRouter();
 
@@ -52,10 +55,9 @@ export default function RegistrarCandidato() {
     return () => unsubscribe();
   }, []);
 
-  // Lógica do Código Temporário Concorrente com Trava
+  // Reservas concorrentes dos códigos, iniciadas após a escolha do tipo MPC.
   useEffect(() => {
-    // Se já tiver feito a reserva nesta montagem, ignora a segunda chamada do Strict Mode
-    if (hasReservedRef.current) return;
+    if (mpcWithoutMovingObject !== false || hasReservedRef.current) return;
     hasReservedRef.current = true;
 
     const reserveTempCode = async () => {
@@ -94,7 +96,43 @@ export default function RegistrarCandidato() {
     };
 
     reserveTempCode();
-  }, []);
+  }, [mpcWithoutMovingObject]);
+
+  useEffect(() => {
+    if (mpcWithoutMovingObject !== true || hasReservedXyzRef.current) return;
+    hasReservedXyzRef.current = true;
+
+    const reserveXyzCode = async () => {
+      try {
+        const configRef = ref(database, "config");
+        const result = await runTransaction(configRef, (currentConfig) => {
+          const config = currentConfig || {};
+          const lastNumber = config.lastXyzCodeNumber || 0;
+          let tempNumber = config.tempXyzCodeNumber || 0;
+
+          if (tempNumber <= lastNumber) {
+            tempNumber = lastNumber + 1;
+          } else {
+            tempNumber += 1;
+          }
+
+          return {
+            ...config,
+            tempXyzCodeNumber: tempNumber,
+          };
+        });
+
+        if (result.committed) {
+          setAssignedXyzNumber(result.snapshot.val().tempXyzCodeNumber);
+        }
+      } catch (error) {
+        hasReservedXyzRef.current = false;
+        console.error("Erro ao reservar código XYZ:", error);
+      }
+    };
+
+    reserveXyzCode();
+  }, [mpcWithoutMovingObject]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -103,7 +141,16 @@ export default function RegistrarCandidato() {
       return;
     }
 
-    if (!assignedNumber) {
+    if (mpcWithoutMovingObject === null) {
+      toast.error("Selecione se há objetos em movimento no MPC Report.");
+      return;
+    }
+
+    const codeNumber = mpcWithoutMovingObject
+      ? assignedXyzNumber
+      : assignedNumber;
+
+    if (!codeNumber) {
       toast.error("Aguarde a atribuição do código temporário.");
       return;
     }
@@ -112,29 +159,35 @@ export default function RegistrarCandidato() {
     const toastId = toast.loading("Registrando candidato...");
 
     try {
-      const formattedCode = `NPC${String(assignedNumber).padStart(4, "0")}`;
+      const codePrefix = mpcWithoutMovingObject ? "XYZ" : "NPC";
+      const formattedCode = `${codePrefix}${String(codeNumber).padStart(4, "0")}`;
       const currentDate = new Date().toISOString().split("T")[0];
 
       const novoCandidato = {
         code: formattedCode,
         set: set,
         date: currentDate,
-        quadrant: quadrant,
+        quadrant: mpcWithoutMovingObject ? 0 : quadrant,
         ps: ps,
         mpcReport: mpcReport,
-        observer: observer,
         observerUid: observerUid,
         status: "Em análise",
       };
 
-      const novoCandidatoRef = ref(database, `candidatos/${formattedCode}`);
+      const novoCandidatoRef = mpcWithoutMovingObject
+        ? push(ref(database, "candidatos"))
+        : ref(database, `candidatos/${formattedCode}`);
       await setDb(novoCandidatoRef, novoCandidato);
 
-      const lastCodeRef = ref(database, "config/lastCodeNumber");
-      await runTransaction(lastCodeRef, (currentLast) => {
-        const current = currentLast || 0;
-        return assignedNumber > current ? assignedNumber : current;
-      });
+      const lastCodeRef = ref(
+        database,
+        mpcWithoutMovingObject
+          ? "config/lastXyzCodeNumber"
+          : "config/lastCodeNumber",
+      );
+      await runTransaction(lastCodeRef, (currentLast) =>
+        codeNumber > (currentLast || 0) ? codeNumber : currentLast,
+      );
 
       toast.success(`Candidato ${formattedCode} registrado com sucesso!`, {
         id: toastId,
@@ -156,10 +209,57 @@ export default function RegistrarCandidato() {
         <h2>Registrar Candidato</h2>
 
         <div className="code-highlight-banner registrar-code" aria-live="polite">
-          <strong>{nextCode}</strong>
+          <strong>
+            {mpcWithoutMovingObject === null
+              ? "Selecione o tipo de MPC"
+              : mpcWithoutMovingObject
+                ? `XYZ${String(assignedXyzNumber || "....").padStart(4, "0")}`
+                : nextCode}
+          </strong>
         </div>
 
         <form onSubmit={handleRegister} className="login-form registrar-form">
+          <div className="input-group">
+            <span className="label">MPC Report</span>
+            <div className="input-ratio">
+              <label
+                htmlFor="mpc-without-moving-object"
+                className={`ratio-label ${mpcWithoutMovingObject ? "selected" : ""}`}
+              >
+                <input
+                  id="mpc-without-moving-object"
+                  type="radio"
+                  name="mpc-object-status"
+                  value="empty"
+                  checked={mpcWithoutMovingObject === true}
+                  required
+                  onChange={() => {
+                    setMpcWithoutMovingObject(true);
+                    setQuadrant("0");
+                  }}
+                />
+                MPC vazio
+              </label>
+              <label
+                htmlFor="mpc-with-moving-object"
+                  className={`ratio-label ${mpcWithoutMovingObject === false ? "selected" : ""}`}
+              >
+                <input
+                  id="mpc-with-moving-object"
+                  type="radio"
+                  name="mpc-object-status"
+                  value="moving"
+                  checked={mpcWithoutMovingObject === false}
+                  onChange={() => {
+                    setMpcWithoutMovingObject(false);
+                    setQuadrant("");
+                  }}
+                />
+                Com objeto em movimento
+              </label>
+            </div>
+          </div>
+
           <div className="input-group">
             <label htmlFor="set">Set</label>
             <input
@@ -180,7 +280,8 @@ export default function RegistrarCandidato() {
               type="text"
               value={quadrant}
               onChange={(e) => setQuadrant(e.target.value)}
-              required
+              required={!mpcWithoutMovingObject}
+              disabled={mpcWithoutMovingObject}
               className="login-input"
             />
           </div>
@@ -240,7 +341,12 @@ export default function RegistrarCandidato() {
 
           <button
             type="submit"
-            disabled={loading || !observerUid || !assignedNumber}
+            disabled={
+              loading ||
+              !observerUid ||
+              mpcWithoutMovingObject === null ||
+              (mpcWithoutMovingObject ? !assignedXyzNumber : !assignedNumber)
+            }
             className="btn login-submit-btn registrar-submit"
           >
             {loading ? "Registrando..." : "Registrar"}
