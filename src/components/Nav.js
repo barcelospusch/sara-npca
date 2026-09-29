@@ -27,6 +27,8 @@ export default function Navbar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [lastCodeNumber, setLastCodeNumber] = useState(0);
   const [tempCodeNumber, setTempCodeNumber] = useState(0);
+  const [lastXyzCodeNumber, setLastXyzCodeNumber] = useState(0);
+  const [tempXyzCodeNumber, setTempXyzCodeNumber] = useState(0);
   const [loadingCounters, setLoadingCounters] = useState(false);
   const [aligning, setAligning] = useState(false);
 
@@ -83,9 +85,13 @@ export default function Navbar() {
         const data = snapshot.val();
         setLastCodeNumber(data.lastCodeNumber || 0);
         setTempCodeNumber(data.tempCodeNumber || 0);
+        setLastXyzCodeNumber(data.lastXyzCodeNumber || 0);
+        setTempXyzCodeNumber(data.tempXyzCodeNumber || 0);
       } else {
         setLastCodeNumber(0);
         setTempCodeNumber(0);
+        setLastXyzCodeNumber(0);
+        setTempXyzCodeNumber(0);
       }
     } catch (error) {
       console.error("Erro ao buscar contadores:", error);
@@ -106,13 +112,16 @@ export default function Navbar() {
     const toastId = toast.loading("Alinhando contadores...");
 
     try {
-      const tempRef = ref(database, "config/tempCodeNumber");
+      const configRef = ref(database, "config");
 
-      await runTransaction(tempRef, () => {
-        return lastCodeNumber;
-      });
+      await runTransaction(configRef, (config) => ({
+        ...(config || {}),
+        tempCodeNumber: config?.lastCodeNumber || 0,
+        tempXyzCodeNumber: config?.lastXyzCodeNumber || 0,
+      }));
 
       setTempCodeNumber(lastCodeNumber);
+      setTempXyzCodeNumber(lastXyzCodeNumber);
       toast.success("Contadores alinhados com sucesso!", { id: toastId });
     } catch (error) {
       console.error("Erro ao alinhar contadores:", error);
@@ -133,10 +142,14 @@ export default function Navbar() {
         ...(config || {}),
         lastCodeNumber: 0,
         tempCodeNumber: 0,
+        lastXyzCodeNumber: 0,
+        tempXyzCodeNumber: 0,
       }));
 
       setLastCodeNumber(0);
       setTempCodeNumber(0);
+      setLastXyzCodeNumber(0);
+      setTempXyzCodeNumber(0);
       toast.success("Contadores zerados com sucesso!", { id: toastId });
     } catch (error) {
       console.error("Erro ao zerar contadores:", error);
@@ -170,28 +183,16 @@ export default function Navbar() {
                       </Link>
                       <button
                         type="button"
-                        className="btn withicon secondary"
-                        title="Atualizar sequência de códigos"
-                        aria-label="Atualizar sequência de códigos"
                         onClick={handleOpenModal}
+                        className="btn secondary withicon"
+                        title="Gerenciar sequências de códigos"
                       >
-                        <ArrowCounterClockwiseIcon />
-                        <span>Align</span>
+                        <ChartBarIcon />
+                        <span>Códigos</span>
                       </button>
-                      <Link
-                        href="/painel"
-                        className="btn withicon secondary"
-                        title="Painel"
-                        aria-label="Painel"
-                      >
-                        <ChartBarIcon size={20} />
-                        <span>Painel</span>
-                      </Link>
-                      <span className="divider" />
                     </>
                   )}
-
-                  <Link href="/registrar" className="btn withicon ">
+                  <Link href="/registrar" className="btn withicon">
                     <PlusIcon />
                     <span>Registrar</span>
                   </Link>
@@ -211,22 +212,20 @@ export default function Navbar() {
                     className="secondary"
                     title="Sair"
                     aria-label="Sair"
-                  >Sair</button>
+                  >
+                    Sair
+                  </button>
                 </>
               ) : (
-                <>
-                  <Link href="/login" className="btn withicon" title="Entrar">
-                    <SignInIcon />
-                    <span>Entrar</span>
-                  </Link>
-                </>
+                <Link href="/login" className="btn secondary withicon">
+                  <SignInIcon />
+                  <span>Entrar</span>
+                </Link>
               )}
             </>
           )}
         </div>
       </nav>
-
-      {/* MODAL DE ALINHAMENTO DE CONTADORES */}
       {isModalOpen && (
         <div
           className="modal-backdrop"
@@ -257,7 +256,7 @@ export default function Navbar() {
               <>
                 <div className="modal-infos counter-infos">
                   <div className="counter-info">
-                    <span>Último registrado:</span>
+                    <span>Último NPC registrado:</span>
                     <strong>
                       NPC{String(lastCodeNumber).padStart(4, "0")} (
                       {lastCodeNumber})
@@ -265,10 +264,26 @@ export default function Navbar() {
                   </div>
 
                   <div className="counter-info">
-                    <span>Contador Temporário:</span>
+                    <span>Próximo NPC:</span>
                     <strong>
                       NPC{String(tempCodeNumber).padStart(4, "0")} (
                       {tempCodeNumber})
+                    </strong>
+                  </div>
+
+                  <div className="counter-info">
+                    <span>Último XYZ registrado:</span>
+                    <strong>
+                      XYZ{String(lastXyzCodeNumber).padStart(4, "0")} (
+                      {lastXyzCodeNumber})
+                    </strong>
+                  </div>
+
+                  <div className="counter-info">
+                    <span>Próximo XYZ:</span>
+                    <strong>
+                      XYZ{String(tempXyzCodeNumber).padStart(4, "0")} (
+                      {tempXyzCodeNumber})
                     </strong>
                   </div>
                 </div>
@@ -287,7 +302,11 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={handleAlign}
-                    disabled={aligning || tempCodeNumber === lastCodeNumber}
+                    disabled={
+                      aligning ||
+                      (tempCodeNumber === lastCodeNumber &&
+                        tempXyzCodeNumber === lastXyzCodeNumber)
+                    }
                     className="btn login-submit-btn"
                   >
                     <ArrowCounterClockwiseIcon size={20} />

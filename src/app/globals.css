@@ -836,6 +836,38 @@ main div.container {
   margin-top: 0 !important;
 }
 
+.members-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.members-toolbar .members-count {
+  margin-bottom: 0;
+}
+
+.member-create-trigger {
+  flex: 0 0 auto;
+}
+
+.member-create-modal {
+  max-width: 480px;
+}
+
+.member-create-modal h2 {
+  margin: 0 28px 16px 0;
+  font-size: 1.2rem;
+}
+
+@media (max-width: 480px) {
+  .members-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .members-count {
   margin-bottom: 10px;
   color: var(--dark-gray);
@@ -900,6 +932,16 @@ main div.container {
 }
 
 .member-role-observer {
+  background-color: var(--light-gray);
+  color: var(--dark-gray);
+}
+
+.member-status-active {
+  background-color: var(--green);
+  color: var(--black);
+}
+
+.member-status-inactive {
   background-color: var(--light-gray);
   color: var(--dark-gray);
 }
@@ -1267,6 +1309,26 @@ table.table td div.container-count-badge p.count-badge {
   outline: none;
   background-color: var(--white);
 }
+
+.password-input-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.password-input-row .login-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.password-toggle-button {
+  width: var(--input-height);
+  min-width: var(--input-height) !important;
+  height: var(--input-height) !important;
+  padding: 0;
+  justify-content: center;
+}
+
 textarea.login-input {
   min-height: 80px;
   resize: vertical;
@@ -1518,6 +1580,19 @@ textarea.login-input {
   display: inline-block;
   flex-shrink: 0;
 }
+
+.mpc-empty-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border: 1px solid var(--black);
+  background-color: var(--secondary);
+  color: var(--black);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .status-provisorio {
   background-color: var(--green);
 }

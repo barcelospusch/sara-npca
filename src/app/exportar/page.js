@@ -15,6 +15,7 @@ export default function ExportarPage() {
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [mpcType, setMpcType] = useState("");
   const [exportMode, setExportMode] = useState("simplificado"); // "simplificado" ou "avancado"
 
   const [loading, setLoading] = useState(true);
@@ -25,27 +26,37 @@ export default function ExportarPage() {
       try {
         // 1. Buscar todos os candidatos
         const candidatosRef = ref(database, "candidatos");
-        const snapshot = await get(candidatosRef);
+        const usuariosRef = ref(database, "usuarios");
+        const [snapshot, usersSnapshot] = await Promise.all([
+          get(candidatosRef),
+          get(usuariosRef),
+        ]);
+        const users = usersSnapshot.exists() ? usersSnapshot.val() : {};
 
         if (snapshot.exists()) {
           const data = snapshot.val();
-          const lista = Object.keys(data).map((key) => ({
-            ...data[key],
-          }));
+          const lista = Object.keys(data).map((key) => {
+            const candidate = data[key];
+            return {
+              ...candidate,
+              observerName:
+                users[candidate.observerUid]?.name ||
+                candidate.observer ||
+                "Observador",
+            };
+          });
 
           setCandidates(lista);
 
           // Extract observadores únicos registrados nos candidatos
           const mapObservadores = new Map();
           lista.forEach((item) => {
-            if (item.observer) {
-              const id = item.observerUid || item.observer;
-              if (!mapObservadores.has(id)) {
-                mapObservadores.set(id, {
-                  id: id,
-                  name: item.observer,
-                });
-              }
+            const id = item.observerUid || item.observer;
+            if (id && !mapObservadores.has(id)) {
+              mapObservadores.set(id, {
+                id: id,
+                name: item.observerName,
+              });
             }
           });
 
@@ -98,12 +109,15 @@ export default function ExportarPage() {
       const filtered = candidates.filter((item) => {
         const obsId = item.observerUid || item.observer;
         const matchesObserver = selectedObservers.includes(obsId);
+        const isEmptyMpc = item.quadrant === 0 || item.quadrant === "0";
+        const matchesMpcType =
+          !mpcType || (mpcType === "empty" ? isEmptyMpc : !isEmptyMpc);
 
         let matchesDate = true;
         if (startDate && item.date < startDate) matchesDate = false;
         if (endDate && item.date > endDate) matchesDate = false;
 
-        return matchesObserver && matchesDate;
+        return matchesObserver && matchesDate && matchesMpcType;
       });
 
       if (filtered.length === 0) {
@@ -147,7 +161,7 @@ export default function ExportarPage() {
         tableRows = filtered.map((item) => [
           item.code || "-",
           formatDate(item.date) || "-",
-          item.observer || "-",
+          item.observerName || "-",
         ]);
       } else {
         tableColumns = [
@@ -166,7 +180,7 @@ export default function ExportarPage() {
           formatDate(item.date) || "-",
           item.quadrant || "-",
           item.ps || "-",
-          item.observer || "-",
+          item.observerName || "-",
           item.status || "-",
           item.mpcReport || "-",
         ]);
@@ -291,6 +305,20 @@ export default function ExportarPage() {
                 />
               </div>
             </div>
+          </div>
+
+          <div className="input-group">
+            <label htmlFor="export-mpc-type">MPC Report</label>
+            <select
+              id="export-mpc-type"
+              value={mpcType}
+              onChange={(event) => setMpcType(event.target.value)}
+              className="login-input"
+            >
+              <option value="">Todos</option>
+              <option value="empty">MPC vazio</option>
+              <option value="moving">Com objeto em movimento</option>
+            </select>
           </div>
 
           {/* SEÇÃO 3: MODO DE VISUALIZAÇÃO (RADIO BUTTONS) */}

@@ -18,6 +18,7 @@ import {
 export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [list, setList] = useState([]);
+  const [membersByUid, setMembersByUid] = useState({});
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
   const [selectedMpcItem, setSelectedMpcItem] = useState(null);
@@ -33,6 +34,7 @@ export default function Home() {
     set: "",
     ps: "",
     status: "",
+    mpcType: "",
   });
   const [draftFilters, setDraftFilters] = useState(filters);
 
@@ -44,6 +46,7 @@ export default function Home() {
     set: "",
     ps: "",
     status: "",
+    mpcType: "",
   };
 
   useEffect(() => {
@@ -81,6 +84,7 @@ export default function Home() {
           const data = snapshot.val();
           const listaFormatada = Object.keys(data).map((key) => ({
             ...data[key],
+            candidateId: key,
           }));
 
           listaFormatada.sort((a, b) => b.code.localeCompare(a.code));
@@ -99,11 +103,31 @@ export default function Home() {
     return () => unsubscribeData();
   }, []);
 
+  useEffect(() => {
+    const usuariosRef = ref(database, "usuarios");
+    const unsubscribeUsers = onValue(usuariosRef, (snapshot) => {
+      setMembersByUid(snapshot.exists() ? snapshot.val() : {});
+    });
+
+    return () => unsubscribeUsers();
+  }, []);
+
+  const getObserverName = (item) =>
+    membersByUid[item.observerUid]?.name ||
+    item.observer ||
+    (item.observerUid ? "Observador" : "-");
+
+  const isEmptyMpc = (item) =>
+    item.quadrant === 0 || item.quadrant === "0";
+
   const observerOptions = Array.from(
     new Map(
       list
-        .filter((item) => item.observer)
-        .map((item) => [item.observerUid || item.observer, item.observer]),
+        .map((item) => {
+          const id = item.observerUid || item.observer;
+          return id ? [id, getObserverName(item)] : null;
+        })
+        .filter(Boolean),
     ),
   )
     .map(([id, name]) => ({ id, name }))
@@ -121,7 +145,11 @@ export default function Home() {
         (!filters.endDate || item.date <= filters.endDate) &&
         (!filters.set || normalizedSet.includes(filters.set.toLowerCase())) &&
         (!filters.ps || item.ps === filters.ps) &&
-        (!filters.status || item.status === filters.status)
+        (!filters.status || item.status === filters.status) &&
+        (!filters.mpcType ||
+          (filters.mpcType === "empty"
+            ? isEmptyMpc(item)
+            : !isEmptyMpc(item)))
       );
     })
     .sort((a, b) => {
@@ -144,6 +172,7 @@ export default function Home() {
     Boolean(filters.set),
     Boolean(filters.ps),
     Boolean(filters.status),
+    Boolean(filters.mpcType),
   ].filter(Boolean).length;
 
   const openFilterModal = () => {
@@ -216,13 +245,19 @@ export default function Home() {
     const toastId = toast.loading("Atualizando informações do candidato...");
 
     try {
-      await update(ref(database, `candidatos/${selectedMpcItem.code}`), {
+      await update(
+        ref(
+          database,
+          `candidatos/${selectedMpcItem.candidateId || selectedMpcItem.code}`,
+        ),
+        {
         set: selectedMpcItem.set || "",
         quadrant: selectedMpcItem.quadrant || "",
         ps: selectedMpcItem.ps || "PS1",
         status: selectedMpcItem.status || "Em análise",
         mpcReport: selectedMpcItem.mpcReport || "",
-      });
+        },
+      );
 
       toast.success(
         `Candidato ${selectedMpcItem.code} atualizado com sucesso!`,
@@ -252,7 +287,12 @@ export default function Home() {
     const toastId = toast.loading("Removendo candidato...");
 
     try {
-      await remove(ref(database, `candidatos/${selectedMpcItem.code}`));
+      await remove(
+        ref(
+          database,
+          `candidatos/${selectedMpcItem.candidateId || selectedMpcItem.code}`,
+        ),
+      );
       toast.success(`Candidato ${selectedMpcItem.code} excluído com sucesso!`, {
         id: toastId,
       });
@@ -400,8 +440,14 @@ export default function Home() {
                 </tr>
               ) : (
                 displayList.map((item, index) => (
-                  <tr key={item.code || index}>
-                    <td>{item.code}</td>
+                  <tr key={item.candidateId || item.code || index}>
+                    <td>
+                      {isEmptyMpc(item) ? (
+                        <span className="mpc-empty-badge">MPC vazio</span>
+                      ) : (
+                        item.code
+                      )}
+                    </td>
                     <td>{item.set}</td>
                     <td>{formatDate(item.date)}</td>
                     <td>{item.quadrant}</td>
@@ -411,10 +457,10 @@ export default function Home() {
                         <Link
                           href={`/membros?uid=${encodeURIComponent(item.observerUid || "")}`}
                         >
-                          {item.observer}
+                          {getObserverName(item)}
                         </Link>
                       ) : (
-                        item.observer
+                        getObserverName(item)
                       )}
                     </td>
                     <td>
@@ -570,6 +616,25 @@ export default function Home() {
               </div>
 
               <div className="input-group">
+                <label htmlFor="dashboard-mpc-type">MPC Report</label>
+                <select
+                  id="dashboard-mpc-type"
+                  className="login-input"
+                  value={draftFilters.mpcType}
+                  onChange={(event) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      mpcType: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Todos</option>
+                  <option value="empty">MPC vazio</option>
+                  <option value="moving">Com objeto em movimento</option>
+                </select>
+              </div>
+
+              <div className="input-group">
                 <span className="label">PS</span>
                 <div className="input-ratio">
                   {[
@@ -676,7 +741,7 @@ export default function Home() {
                         href={`/membros?uid=${encodeURIComponent(selectedMpcItem.observerUid || "")}`}
                         onClick={() => setSelectedMpcItem(null)}
                       >
-                        {selectedMpcItem.observer || "-"}
+                        {getObserverName(selectedMpcItem)}
                       </Link>
                     </strong>
                   </div>
@@ -839,7 +904,7 @@ export default function Home() {
                   </div>
                   <div>
                     <span>Observador</span>
-                    <strong>{selectedMpcItem.observer || "-"}</strong>
+                    <strong>{getObserverName(selectedMpcItem)}</strong>
                   </div>
                   <div>
                     <span>Data de Registro</span>
