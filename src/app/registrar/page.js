@@ -238,7 +238,7 @@ export default function RegistrarCandidato() {
                     setQuadrant("0");
                   }}
                 />
-                MPC vazio
+                MPC Report vazio
               </label>
               <label
                 htmlFor="mpc-with-moving-object"
