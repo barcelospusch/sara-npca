@@ -45,4 +45,4 @@ Os nomes dos observadores na interface são obtidos pelo UID salvo em cada candi
 
 Copie `.env.example` para `.env.local` e preencha as variáveis com a configuração do app Web do Firebase. O Next.js carrega `.env.local` automaticamente durante o desenvolvimento e o build.
 
-As variáveis `NEXT_PUBLIC_FIREBASE_*` são incorporadas ao bundle do navegador e, portanto, são públicas. Não coloque senhas ou chaves privadas nelas. Proteja os dados com as Firebase Security Rules e as restrições apropriadas no Firebase Console. `.env.local` está ignorado pelo Git; mantenha `.env.example` sem valores reais no repositório.
+As variáveis `FIREBASE_*` são incorporadas ao bundle do navegador e, portanto, são públicas. Não coloque senhas ou chaves privadas nelas. Proteja os dados com as Firebase Security Rules e as restrições apropriadas no Firebase Console. `.env.local` está ignorado pelo Git; mantenha `.env.example` sem valores reais no repositório.
