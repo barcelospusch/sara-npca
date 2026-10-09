@@ -6,7 +6,7 @@ import Footer from "@/components/Footer";
 export const metadata = {
   title: "SARA-NPCA",
   description:
-    "Sistema de Adminstração e Registro de Asteroides - Núcleo de Pesquisa e Caça de Asteroides",
+    "Sistema de Administração e Registro de Asteroides - Núcleo de Pesquisa e Caça de Asteroides",
 };
 
 export default function RootLayout({ children }) {

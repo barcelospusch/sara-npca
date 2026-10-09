@@ -1,6 +1,13 @@
 "use client";
 
-import { app, auth, database, firestore } from "@/firebase";
+import { auth } from "@/firebase";
+import {
+  createObserverAccount,
+  deleteMemberProfile,
+  getMemberProfile,
+  subscribeToMembers,
+  updateMemberProfile,
+} from "@/lib/firebase/members";
 import {
   CopyIcon,
   EyeIcon,
@@ -8,16 +15,7 @@ import {
   UserPlusIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { getApps, initializeApp } from "firebase/app";
-import {
-  createUserWithEmailAndPassword,
-  deleteUser,
-  getAuth,
-  onAuthStateChanged,
-  updateProfile,
-} from "firebase/auth";
-import { get, onValue, ref, remove, set, update } from "firebase/database";
-import { deleteDoc, doc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -26,6 +24,7 @@ export default function ListaMembros() {
   const [membros, setMembros] = useState([]);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
+  const [dataLoadError, setDataLoadError] = useState("");
   const [selectedMember, setSelectedMember] = useState(null);
   const [memberName, setMemberName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
@@ -44,10 +43,9 @@ export default function ListaMembros() {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const userRef = ref(database, `usuarios/${user.uid}`);
-          const snapshot = await get(userRef);
+          const profile = await getMemberProfile(user.uid);
 
-          if (!snapshot.exists() || snapshot.val().admin !== true) {
+          if (!profile || profile.admin !== true) {
             toast.error(
               "Acesso negado. Você não possui permissão de administrador.",
             );
@@ -57,7 +55,9 @@ export default function ListaMembros() {
           }
         } catch (error) {
           console.error("Erro ao validar admin:", error);
-          toast.error("Erro de autenticação. Redirecionando...");
+          toast.error(
+            "Não foi possível validar o administrador no Realtime Database. Confira a URL do banco e as permissões de acesso.",
+          );
           router.push("/");
         }
       } else {
@@ -72,92 +72,39 @@ export default function ListaMembros() {
   useEffect(() => {
     if (loadingAuth) return;
 
-    const usuariosRef = ref(database, "usuarios");
-    const candidatosRef = ref(database, "candidatos");
+    let requestedUid = new URLSearchParams(window.location.search).get("uid");
 
-    // Escuta alterações na coleção de usuários
-    const unsubscribeUsuarios = onValue(
-      usuariosRef,
-      (usuariosSnapshot) => {
-        // Escuta alterações na coleção de candidatos
-        onValue(
-          candidatosRef,
-          (candidatosSnapshot) => {
-            if (usuariosSnapshot.exists()) {
-              const dadosUsuarios = usuariosSnapshot.val();
-              const dadosCandidatos = candidatosSnapshot.exists()
-                ? candidatosSnapshot.val()
-                : {};
+    const unsubscribe = subscribeToMembers(
+      (listaMembrosFormatada) => {
+        setMembros(listaMembrosFormatada);
 
-              // Converte o objeto de candidatos em array
-              const listaCandidatos = Object.values(dadosCandidatos);
+        if (requestedUid) {
+          const requestedMember = listaMembrosFormatada.find(
+            (membro) => membro.uid === requestedUid,
+          );
 
-              const listaMembrosFormatada = Object.keys(dadosUsuarios).map(
-                (uid) => {
-                  // Filtra os candidatos registrados por este usuário específico (observerUid)
-                  const candidatosDoMembro = listaCandidatos.filter(
-                    (candidato) => candidato.observerUid === uid,
-                  );
-
-                  // Contagem por status referente aos candidatos do membro
-                  const total = candidatosDoMembro.length;
-                  const emAnalise = candidatosDoMembro.filter(
-                    (c) =>
-                      c.status === "Em análise" || c.status === "em_analise",
-                  ).length;
-                  const preliminar = candidatosDoMembro.filter(
-                    (c) =>
-                      c.status === "Preliminar" || c.status === "preliminar",
-                  ).length;
-                  const provisoria = candidatosDoMembro.filter(
-                    (c) =>
-                      c.status === "Provisória" ||
-                      c.status === "Provisório" ||
-                      c.status === "provisoria",
-                  ).length;
-
-                  return {
-                    uid,
-                    ...dadosUsuarios[uid],
-                    totalRegistros: total,
-                    emAnalise,
-                    preliminar,
-                    provisoria,
-                  };
-                },
-              );
-
-              listaMembrosFormatada.sort((a, b) => {
-                if (Boolean(a.admin) !== Boolean(b.admin)) {
-                  return a.admin ? -1 : 1;
-                }
-
-                return (a.name || "").localeCompare(b.name || "", "pt-BR", {
-                  sensitivity: "base",
-                });
-              });
-
-              setMembros(listaMembrosFormatada);
-            } else {
-              setMembros([]);
-            }
-            setLoadingData(false);
-          },
-          (err) => {
-            console.error("Erro ao ler dados de candidatos:", err);
-            setLoadingData(false);
-          },
-        );
+          if (requestedMember) {
+            setSelectedMember(requestedMember);
+            setMemberName(requestedMember.name || "");
+            setMemberEmail(requestedMember.email || "");
+            setIsAdminRole(Boolean(requestedMember.admin));
+            setIsMemberActive(requestedMember.active !== false);
+            requestedUid = null;
+            window.history.replaceState({}, "", window.location.pathname);
+          }
+        }
+        setLoadingData(false);
       },
-      (err) => {
-        console.error("Erro ao ler dados de usuários:", err);
+      (path, error) => {
+        console.error(`Erro ao ler dados de ${path}:`, error);
+        setDataLoadError(
+          `Não foi possível carregar os dados de ${path}. Confira a URL do Realtime Database e as permissões de acesso.`,
+        );
         setLoadingData(false);
       },
     );
 
-    return () => {
-      unsubscribeUsuarios();
-    };
+    return unsubscribe;
   }, [loadingAuth]);
 
   const handleOpenMember = (membro) => {
@@ -167,22 +114,6 @@ export default function ListaMembros() {
     setIsAdminRole(Boolean(membro.admin));
     setIsMemberActive(membro.active !== false);
   };
-
-  useEffect(() => {
-    if (membros.length === 0) return;
-
-    const requestedUid = new URLSearchParams(window.location.search).get("uid");
-    if (!requestedUid) return;
-
-    const requestedMember = membros.find(
-      (membro) => membro.uid === requestedUid,
-    );
-
-    if (requestedMember) {
-      handleOpenMember(requestedMember);
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, [membros]);
 
   const handleCloseMember = () => {
     if (saving) return;
@@ -195,58 +126,11 @@ export default function ListaMembros() {
     const toastId = toast.loading("Criando conta de observador...");
 
     try {
-      const secondaryApp =
-        getApps().find(
-          (firebaseApp) => firebaseApp.name === "sara-observer-creator",
-        ) || initializeApp(app.options, "sara-observer-creator");
-      const secondaryAuth = getAuth(secondaryApp);
-      let createdUser;
-      let firestoreSyncFailed = false;
-
-      try {
-        const credential = await createUserWithEmailAndPassword(
-          secondaryAuth,
-          newMemberEmail.trim(),
-          newMemberPassword,
-        );
-        createdUser = credential.user;
-        await updateProfile(createdUser, { displayName: newMemberName.trim() });
-
-        const observerProfile = {
-          uid: createdUser.uid,
-          name: newMemberName.trim(),
-          email: createdUser.email,
-          admin: false,
-          active: true,
-        };
-
-        await set(
-          ref(database, `usuarios/${createdUser.uid}`),
-          observerProfile,
-        );
-
-        try {
-          await setDoc(
-            doc(firestore, "usuarios", createdUser.uid),
-            observerProfile,
-          );
-        } catch (error) {
-          firestoreSyncFailed = true;
-          console.warn(
-            "Perfil criado no Realtime Database; Firestore indisponível:",
-            error,
-          );
-        }
-      } catch (error) {
-        if (createdUser) {
-          await Promise.allSettled([
-            deleteDoc(doc(firestore, "usuarios", createdUser.uid)),
-            remove(ref(database, `usuarios/${createdUser.uid}`)),
-            deleteUser(createdUser),
-          ]);
-        }
-        throw error;
-      }
+      const { firestoreSyncFailed } = await createObserverAccount({
+        name: newMemberName,
+        email: newMemberEmail,
+        password: newMemberPassword,
+      });
 
       setNewMemberName("");
       setNewMemberEmail("");
@@ -311,9 +195,7 @@ export default function ListaMembros() {
         active: isMemberActive,
       };
 
-      await update(ref(database, `usuarios/${selectedMember.uid}`), {
-        ...updatedMember,
-      });
+      await updateMemberProfile(selectedMember.uid, updatedMember);
 
       setMembros((currentMembers) =>
         currentMembers.map((member) =>
@@ -353,7 +235,7 @@ export default function ListaMembros() {
     const toastId = toast.loading("Excluindo membro...");
 
     try {
-      await remove(ref(database, `usuarios/${selectedMember.uid}`));
+      await deleteMemberProfile(selectedMember.uid);
 
       setMembros((currentMembers) =>
         currentMembers.filter((member) => member.uid !== selectedMember.uid),
@@ -376,6 +258,14 @@ export default function ListaMembros() {
         <p className="login-text members-loading-text">
           Verificando credenciais e carregando banco de dados...
         </p>
+      </main>
+    );
+  }
+
+  if (dataLoadError) {
+    return (
+      <main className="center-container members-loading">
+        <p className="login-text members-loading-text">{dataLoadError}</p>
       </main>
     );
   }

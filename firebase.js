@@ -14,6 +14,7 @@ const firebaseConfig = {
 };
 
 const missingConfig = Object.entries(firebaseConfig)
+  .filter(([key]) => key !== "databaseURL")
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
@@ -25,7 +26,9 @@ if (missingConfig.length > 0) {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const database = getDatabase(app, firebaseConfig.databaseURL);
+const database = firebaseConfig.databaseURL
+  ? getDatabase(app, firebaseConfig.databaseURL)
+  : getDatabase(app);
 const firestore = getFirestore(app);
 
 export { app, auth, database, firestore };
