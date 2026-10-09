@@ -41,8 +41,23 @@ Os nomes dos observadores na interface são obtidos pelo UID salvo em cada candi
 - jsPDF e jsPDF AutoTable para relatórios PDF.
 - Phosphor Icons para ícones da interface.
 
+## Organização do código
+
+- `src/app/`: rotas e componentes de página do Next.js.
+- `src/components/`: componentes compartilhados entre páginas.
+- `src/lib/firebase/`: operações de dados organizadas por domínio, separadas da interface.
+- `src/firebase.js`: inicialização compartilhada dos serviços Firebase.
+
 ## Configuração local
 
-Copie `.env.example` para `.env.local` e preencha as variáveis com a configuração do app Web do Firebase. O Next.js carrega `.env.local` automaticamente durante o desenvolvimento e o build.
+Copie `.env.example` para `.env.local` e preencha as variáveis com a configuração do app Web do Firebase. Defina `NEXT_PUBLIC_FIREBASE_DATABASE_URL` com a URL exata do Realtime Database exibida no Firebase Console (por exemplo, `https://<projeto>-default-rtdb.<região>.firebasedatabase.app`). O Next.js carrega `.env.local` automaticamente durante o desenvolvimento e o build.
 
-As variáveis `FIREBASE_*` são incorporadas ao bundle do navegador e, portanto, são públicas. Não coloque senhas ou chaves privadas nelas. Proteja os dados com as Firebase Security Rules e as restrições apropriadas no Firebase Console. `.env.local` está ignorado pelo Git; mantenha `.env.example` sem valores reais no repositório.
+As variáveis `NEXT_PUBLIC_FIREBASE_*` são incorporadas ao bundle do navegador e, portanto, são públicas. Não coloque senhas ou chaves privadas nelas. A URL correta do banco não concede acesso por si só: o Realtime Database continua aplicando suas regras de acesso. `.env.local` está ignorado pelo Git; mantenha `.env.example` sem valores reais no repositório.
+
+### Segurança antes de publicar/deployar
+
+O código do cliente e as variáveis `NEXT_PUBLIC_*` são públicos. A checagem de administrador feita pela interface serve apenas para navegação e não protege os dados contra chamadas diretas ao Firebase. Antes de conectar dados reais ou disponibilizar o sistema, configure e teste Firebase Security Rules para cada caminho e operação, limitando leituras e gravações por identidade e função. Nunca use regras abertas como `".read": true` ou `".write": true` em produção. Para operações administrativas que não possam ser protegidas adequadamente por regras, mova-as para um backend confiável com verificação de ID token e privilégios no servidor.
+
+Na implementação atual, excluir um membro remove o perfil de `usuarios/{uid}`, mas não exclui a conta do Firebase Authentication; editar o e-mail altera o perfil no Realtime Database, não o e-mail de autenticação. Para sincronizar essas operações com Authentication, implemente-as em um backend confiável usando Firebase Admin SDK.
+
+`"private": true` no `package.json` impede publicação acidental no npm; isso não impede que o código-fonte seja hospedado em um repositório GitHub público.
