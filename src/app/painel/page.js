@@ -172,7 +172,7 @@ export default function Estatisticas() {
 	const [loading, setLoading] = useState(true);
 	const [authorized, setAuthorized] = useState(false);
 	const [candidates, setCandidates] = useState([]);
-	const [members, setMembers] = useState([]);
+	const [membersByUid, setMembersByUid] = useState({});
 	const [period, setPeriod] = useState("all");
 	const [statusFilter, setStatusFilter] = useState("all");
 
@@ -200,14 +200,47 @@ export default function Estatisticas() {
 			setCandidates(Object.values(value));
 			setLoading(false);
 		}, () => setLoading(false));
-		const membersUnsubscribe = onValue(ref(database, "usuarios"), (snapshot) => {
-			setMembers(snapshot.exists() ? Object.entries(snapshot.val()).map(([uid, value]) => ({ uid, ...value })) : []);
-		});
 		return () => {
 			candidatesUnsubscribe();
-			membersUnsubscribe();
 		};
 	}, [authorized]);
+
+	useEffect(() => {
+		if (!authorized) return undefined;
+
+		const observerUids = [
+			...new Set(candidates.map((candidate) => candidate.observerUid).filter(Boolean)),
+		];
+		setMembersByUid((currentMembers) =>
+			Object.fromEntries(
+				observerUids
+					.filter((uid) => currentMembers[uid])
+					.map((uid) => [uid, currentMembers[uid]]),
+			),
+		);
+
+		const unsubscribeMembers = observerUids.map((uid) =>
+			onValue(
+				ref(database, `usuarios/${uid}`),
+				(snapshot) => {
+					setMembersByUid((currentMembers) => {
+						const updatedMembers = { ...currentMembers };
+						if (snapshot.exists()) {
+							updatedMembers[uid] = snapshot.val();
+						} else {
+							delete updatedMembers[uid];
+						}
+						return updatedMembers;
+					});
+				},
+				(error) => {
+					console.error(`Erro ao buscar usuário ${uid}:`, error);
+				},
+			),
+		);
+
+		return () => unsubscribeMembers.forEach((unsubscribe) => unsubscribe());
+	}, [authorized, candidates]);
 
 	const now = new Date();
 	const cutoff = period === "all" ? null : new Date(now.getFullYear(), now.getMonth() - Number(period) + 1, 1);
@@ -223,8 +256,8 @@ export default function Estatisticas() {
 		return counts;
 	}, {});
 	const memberData = Object.entries(memberCounts).map(([key, value]) => {
-		const member = members.find((item) => item.uid === key);
-		return { label: member?.nome || member?.name || (member?.email ? member.email.split("@")[0] : key), value };
+		const member = membersByUid[key];
+		return { label: member?.name || member?.nome || (member?.email ? member.email.split("@")[0] : key), value };
 	}).sort((a, b) => b.value - a.value).slice(0, 8);
 	const monthlyCounts = filteredCandidates.reduce((counts, candidate) => {
 		if (candidate.date) {

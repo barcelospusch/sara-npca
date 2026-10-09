@@ -3,7 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
-import { ref, onValue, get, update, remove } from "firebase/database";
+import {
+  equalTo,
+  get,
+  onValue,
+  orderByChild,
+  query,
+  ref,
+  remove,
+  update,
+} from "firebase/database";
 import { auth, database } from "@/firebase";
 import toast from "react-hot-toast";
 import {
@@ -17,6 +26,7 @@ import {
 
 export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [list, setList] = useState([]);
   const [membersByUid, setMembersByUid] = useState({});
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -27,58 +37,81 @@ export default function Home() {
   const [deletingCandidate, setDeletingCandidate] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState({
-    sort: "code-desc",
+    sort: "date-desc",
     observers: [],
     startDate: "",
     endDate: "",
     set: "",
     ps: "",
-    status: "",
-    mpcType: "",
+    status: [],
+    mpcType: [],
   });
   const [draftFilters, setDraftFilters] = useState(filters);
 
   const defaultFilters = {
-    sort: "code-desc",
+    sort: "date-desc",
     observers: [],
     startDate: "",
     endDate: "",
     set: "",
     ps: "",
-    status: "",
-    mpcType: "",
+    status: [],
+    mpcType: [],
   };
 
   useEffect(() => {
+    let authCheckId = 0;
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      const currentCheckId = ++authCheckId;
+      setLoadingAuth(true);
+      setCurrentUser(user);
+      setIsAdmin(false);
+
       if (user) {
         try {
           const userRef = ref(database, `usuarios/${user.uid}`);
           const snapshot = await get(userRef);
 
-          if (snapshot.exists() && snapshot.val().admin === true) {
-            setIsAdmin(true);
-          } else {
-            setIsAdmin(false);
+          if (currentCheckId === authCheckId) {
+            setIsAdmin(snapshot.exists() && snapshot.val().admin === true);
           }
         } catch (error) {
           console.error("Erro ao verificar permissões de admin:", error);
-          setIsAdmin(false);
         }
-      } else {
-        setIsAdmin(false);
       }
-      setLoadingAuth(false);
+
+      if (currentCheckId === authCheckId) {
+        setLoadingAuth(false);
+      }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      authCheckId += 1;
+      unsubscribeAuth();
+    };
   }, []);
 
   useEffect(() => {
+    if (loadingAuth) return undefined;
+
+    if (!currentUser) {
+      setList([]);
+      setLoadingData(false);
+      return undefined;
+    }
+
+    setLoadingData(true);
     const candidatosRef = ref(database, "candidatos");
+    const candidatosQuery = isAdmin
+      ? candidatosRef
+      : query(
+          candidatosRef,
+          orderByChild("observerUid"),
+          equalTo(currentUser.uid),
+        );
 
     const unsubscribeData = onValue(
-      candidatosRef,
+      candidatosQuery,
       (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
@@ -87,7 +120,6 @@ export default function Home() {
             candidateId: key,
           }));
 
-          listaFormatada.sort((a, b) => b.code.localeCompare(a.code));
           setList(listaFormatada);
         } else {
           setList([]);
@@ -96,29 +128,60 @@ export default function Home() {
       },
       (error) => {
         console.error("Erro ao buscar candidatos:", error);
+        setList([]);
         setLoadingData(false);
       },
     );
 
     return () => unsubscribeData();
-  }, []);
+  }, [currentUser?.uid, isAdmin, loadingAuth]);
 
   useEffect(() => {
-    const usuariosRef = ref(database, "usuarios");
-    const unsubscribeUsers = onValue(usuariosRef, (snapshot) => {
-      setMembersByUid(snapshot.exists() ? snapshot.val() : {});
-    });
+    const observerUids = new Set(
+      list.map((item) => item.observerUid).filter(Boolean),
+    );
+    if (!isAdmin && currentUser?.uid) observerUids.add(currentUser.uid);
 
-    return () => unsubscribeUsers();
-  }, []);
+    setMembersByUid((currentMembers) =>
+      Object.fromEntries(
+        Array.from(observerUids)
+          .filter((uid) => currentMembers[uid])
+          .map((uid) => [uid, currentMembers[uid]]),
+      ),
+    );
+
+    const unsubscribeUsers = Array.from(observerUids, (uid) =>
+      onValue(
+        ref(database, `usuarios/${uid}`),
+        (snapshot) => {
+          setMembersByUid((currentMembers) => {
+            const updatedMembers = { ...currentMembers };
+            if (snapshot.exists()) {
+              updatedMembers[uid] = snapshot.val();
+            } else {
+              delete updatedMembers[uid];
+            }
+            return updatedMembers;
+          });
+        },
+        (error) => {
+          console.error(`Erro ao buscar usuário ${uid}:`, error);
+        },
+      ),
+    );
+
+    return () => unsubscribeUsers.forEach((unsubscribe) => unsubscribe());
+  }, [currentUser?.uid, isAdmin, list]);
 
   const getObserverName = (item) =>
     membersByUid[item.observerUid]?.name ||
     item.observer ||
     (item.observerUid ? "Observador" : "-");
 
-  const isEmptyMpc = (item) =>
-    item.quadrant === 0 || item.quadrant === "0";
+  const isEmptyMpc = (item) => item.quadrant === 0 || item.quadrant === "0";
+
+  const getMpcType = (item) =>
+    item.mpcType || (isEmptyMpc(item) ? "empty" : "moving");
 
   const observerOptions = Array.from(
     new Map(
@@ -145,24 +208,16 @@ export default function Home() {
         (!filters.endDate || item.date <= filters.endDate) &&
         (!filters.set || normalizedSet.includes(filters.set.toLowerCase())) &&
         (!filters.ps || item.ps === filters.ps) &&
-        (!filters.status || item.status === filters.status) &&
-        (!filters.mpcType ||
-          (filters.mpcType === "empty"
-            ? isEmptyMpc(item)
-            : !isEmptyMpc(item)))
+        (filters.status.length === 0 || filters.status.includes(item.status)) &&
+        (filters.mpcType.length === 0 ||
+          filters.mpcType.includes(getMpcType(item)))
       );
     })
     .sort((a, b) => {
       if (filters.sort === "date-asc") {
         return (a.date || "").localeCompare(b.date || "");
       }
-      if (filters.sort === "date-desc") {
-        return (b.date || "").localeCompare(a.date || "");
-      }
-      if (filters.sort === "code-asc") {
-        return (a.code || "").localeCompare(b.code || "");
-      }
-      return (b.code || "").localeCompare(a.code || "");
+      return (b.date || "").localeCompare(a.date || "");
     });
 
   const activeFilterCount = [
@@ -171,8 +226,8 @@ export default function Home() {
     Boolean(filters.endDate),
     Boolean(filters.set),
     Boolean(filters.ps),
-    Boolean(filters.status),
-    Boolean(filters.mpcType),
+    filters.status.length > 0,
+    filters.mpcType.length > 0,
   ].filter(Boolean).length;
 
   const openFilterModal = () => {
@@ -201,6 +256,15 @@ export default function Home() {
       observers: current.observers.includes(observerId)
         ? current.observers.filter((id) => id !== observerId)
         : [...current.observers, observerId],
+    }));
+  };
+
+  const toggleFilterValue = (field, value) => {
+    setDraftFilters((current) => ({
+      ...current,
+      [field]: current[field].includes(value)
+        ? current[field].filter((item) => item !== value)
+        : [...current[field], value],
     }));
   };
 
@@ -251,11 +315,11 @@ export default function Home() {
           `candidatos/${selectedMpcItem.candidateId || selectedMpcItem.code}`,
         ),
         {
-        set: selectedMpcItem.set || "",
-        quadrant: selectedMpcItem.quadrant || "",
-        ps: selectedMpcItem.ps || "PS1",
-        status: selectedMpcItem.status || "Em análise",
-        mpcReport: selectedMpcItem.mpcReport || "",
+          set: selectedMpcItem.set || "",
+          quadrant: selectedMpcItem.quadrant || "",
+          ps: selectedMpcItem.ps || "PS1",
+          status: selectedMpcItem.status || "Em análise",
+          mpcReport: selectedMpcItem.mpcReport || "",
         },
       );
 
@@ -425,8 +489,8 @@ export default function Home() {
                   </div>
                 </th>
                 <th>
-                  <div className="icon-label" title="Resumo">
-                    <span>Resumo</span>
+                  <div className="icon-label" title="Detalhes">
+                    <span>Detalhes</span>
                   </div>
                 </th>
               </tr>
@@ -442,8 +506,10 @@ export default function Home() {
                 displayList.map((item, index) => (
                   <tr key={item.candidateId || item.code || index}>
                     <td>
-                      {isEmptyMpc(item) ? (
+                      {getMpcType(item) === "empty" ? (
                         <span className="mpc-empty-badge">MPC vazio</span>
+                      ) : getMpcType(item) === "cataloged" ? (
+                        <span className="mpc-cataloged-badge">{item.code}</span>
                       ) : (
                         item.code
                       )}
@@ -530,8 +596,6 @@ export default function Home() {
                     }))
                   }
                 >
-                  <option value="code-desc">Código: mais recentes</option>
-                  <option value="code-asc">Código: mais antigos</option>
                   <option value="date-desc">Data: mais recentes</option>
                   <option value="date-asc">Data: mais antigos</option>
                 </select>
@@ -616,22 +680,26 @@ export default function Home() {
               </div>
 
               <div className="input-group">
-                <label htmlFor="dashboard-mpc-type">MPC Report</label>
-                <select
-                  id="dashboard-mpc-type"
-                  className="login-input"
-                  value={draftFilters.mpcType}
-                  onChange={(event) =>
-                    setDraftFilters((current) => ({
-                      ...current,
-                      mpcType: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Todos</option>
-                  <option value="empty">MPC vazio</option>
-                  <option value="moving">Com objeto em movimento</option>
-                </select>
+                <span className="label">MPC Report</span>
+                <div className="input-ratio dashboard-multi-options">
+                  {[
+                    ["empty", "MPC vazio"],
+                    ["moving", "Novo candidato"],
+                    ["cataloged", "Já catalogado"],
+                  ].map(([value, label]) => (
+                    <label
+                      key={value}
+                      className={`ratio-label ${draftFilters.mpcType.includes(value) ? "selected" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={draftFilters.mpcType.includes(value)}
+                        onChange={() => toggleFilterValue("mpcType", value)}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="input-group">
@@ -665,23 +733,26 @@ export default function Home() {
               </div>
 
               <div className="input-group">
-                <label htmlFor="dashboard-status">Status</label>
-                <select
-                  id="dashboard-status"
-                  className="login-input"
-                  value={draftFilters.status}
-                  onChange={(event) =>
-                    setDraftFilters((current) => ({
-                      ...current,
-                      status: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Todos</option>
-                  <option value="Em análise">Em análise</option>
-                  <option value="Preliminar">Preliminar</option>
-                  <option value="Provisório">Provisório</option>
-                </select>
+                <span className="label">Status</span>
+                <div className="input-ratio dashboard-multi-options dashboard-status-options">
+                  {[
+                    ["Em análise", "Em análise", "review"],
+                    ["Preliminar", "Preliminar", "preliminar"],
+                    ["Provisório", "Provisório", "provisional"],
+                  ].map(([value, label, colorClass]) => (
+                    <label
+                      key={value}
+                      className={`ratio-label ${colorClass} ${draftFilters.status.includes(value) ? "selected" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={draftFilters.status.includes(value)}
+                        onChange={() => toggleFilterValue("status", value)}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="dashboard-filter-actions">
@@ -888,7 +959,7 @@ export default function Home() {
                     disabled={savingCandidate || deletingCandidate}
                     className="btn login-submit-btn candidate-save-button"
                   >
-                    <FloppyDiskIcon size={20}/>
+                    <FloppyDiskIcon size={20} />
                     {savingCandidate
                       ? "Salvando Alterações..."
                       : "Salvar Modificações"}
