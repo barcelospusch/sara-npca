@@ -68,7 +68,7 @@ a.btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    svg{
+    svg {
       font-size: 20px;
     }
   }
@@ -124,7 +124,7 @@ textarea:focus-visible {
 }
 
 @media (width<=850px) {
-  .site-nav-logo{
+  .site-nav-logo {
     font-size: 0.75rem;
   }
   .site-nav-brand,
@@ -133,17 +133,18 @@ textarea:focus-visible {
   }
 
   .site-nav-actions {
-    a.btn, button {
-      span{
+    a.btn,
+    button {
+      span {
         display: none;
       }
-      &.withicon{
+      &.withicon {
         width: 30px;
         padding: 0;
         justify-content: center;
         font-size: 20px;
-        svg{
-          size:initial;
+        svg {
+          size: initial;
         }
       }
     }
@@ -153,12 +154,14 @@ textarea:focus-visible {
 /* Footer */
 footer {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 50px;
+  height: 120px;
   background-color: var(--white);
   border-top: 2px solid var(--light-gray);
   padding-inline: var(--page-padding);
+  padding-bottom: 20px;
 }
 
 hr {
@@ -492,7 +495,9 @@ main {
   height: 100%;
   min-width: 4px;
   background: var(--blue);
-  transition: width 0.25s ease, background-color 0.15s ease;
+  transition:
+    width 0.25s ease,
+    background-color 0.15s ease;
 }
 
 .member-bar.active {
@@ -663,7 +668,6 @@ main {
   }
 }
 
-
 .dashboard-toolbar {
   display: flex;
   align-items: center;
@@ -697,7 +701,8 @@ main {
 }
 
 .dashboard-filter-modal {
-  max-width: 560px;
+  width: min(760px, calc(100% - 40px)) !important;
+  max-width: 760px !important;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
 }
@@ -1108,7 +1113,7 @@ table.table th div.icon-label {
   .icon {
     display: none;
   }
-  svg{
+  svg {
     font-size: 20px;
   }
 }
@@ -1295,7 +1300,8 @@ table.table td div.container-count-badge p.count-badge {
   gap: 5px;
 }
 
-.input-group label, .input-group .label {
+.input-group label,
+.input-group .label {
   font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -1456,6 +1462,27 @@ textarea.login-input {
   letter-spacing: 1px;
 }
 
+.registrar-code > label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  letter-spacing: normal;
+}
+
+.registrar-code > .login-input {
+  width: 100%;
+  text-align: center;
+  letter-spacing: normal;
+}
+
+.registrar-mpc-options .ratio-label {
+  height: auto;
+  min-height: 40px;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
 .registrar-form {
   gap: 16px;
 }
@@ -1526,11 +1553,10 @@ textarea.login-input {
   }
 }
 
-
-.input-ratio{
+.input-ratio {
   width: 100%;
   display: flex;
-  .ratio-label{
+  .ratio-label {
     height: 30px;
     width: 100%;
     border: 2px solid var(--black);
@@ -1539,7 +1565,7 @@ textarea.login-input {
     justify-content: center;
     cursor: pointer;
 
-    input{
+    input {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -1550,14 +1576,14 @@ textarea.login-input {
       outline: 2px solid var(--primary);
       outline-offset: -2px;
     }
-    &.selected{
+    &.selected {
       background-color: var(--primary);
       color: var(--white);
-      &.review{
+      &.review {
         background-color: var(--secondary);
         color: var(--black);
       }
-      &.preliminar{
+      &.preliminar {
         background-color: var(--blue);
         color: var(--white);
       }
@@ -1567,9 +1593,33 @@ textarea.login-input {
       }
     }
   }
-  .ratio-label:not(:last-child){
+  .ratio-label:not(:last-child) {
     border-right: none;
   }
+}
+
+.dashboard-multi-options .ratio-label {
+  height: auto;
+  min-height: 40px;
+  padding: 6px 8px;
+  text-align: center;
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.dashboard-status-options .ratio-label.selected.review {
+  background-color: var(--secondary);
+  color: var(--black);
+}
+
+.dashboard-status-options .ratio-label.selected.preliminar {
+  background-color: var(--blue);
+  color: var(--white);
+}
+
+.dashboard-status-options .ratio-label.selected.provisional {
+  background-color: var(--green);
+  color: var(--black);
 }
 
 .status-badge {
@@ -1593,6 +1643,19 @@ textarea.login-input {
   white-space: nowrap;
 }
 
+.mpc-cataloged-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border: 1px solid var(--black);
+  background-color: #d9eafb;
+  color: var(--black);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .status-provisorio {
   background-color: var(--green);
 }
@@ -1603,7 +1666,6 @@ textarea.login-input {
 .status-em-analise {
   background-color: var(--secondary);
 }
-
 
 /* Modal */
 .modal-backdrop {

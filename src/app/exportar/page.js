@@ -1,8 +1,15 @@
 "use client";
 
-import { database } from "@/firebase";
+import { auth, database } from "@/firebase";
 import { DownloadSimpleIcon } from "@phosphor-icons/react";
-import { get, ref } from "firebase/database";
+import { onAuthStateChanged } from "firebase/auth";
+import {
+  equalTo,
+  get,
+  orderByChild,
+  query,
+  ref,
+} from "firebase/database";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useEffect, useState } from "react";
@@ -22,58 +29,94 @@ export default function ExportarPage() {
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
+    let authCheckId = 0;
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      const currentCheckId = ++authCheckId;
+      setLoading(true);
+
+      if (!user) {
+        setCandidates([]);
+        setObserversList([]);
+        setSelectedObservers([]);
+        setLoading(false);
+        return;
+      }
+
       try {
-        // 1. Buscar todos os candidatos
+        const userSnapshot = await get(ref(database, `usuarios/${user.uid}`));
+        const isAdmin =
+          userSnapshot.exists() && userSnapshot.val().admin === true;
         const candidatosRef = ref(database, "candidatos");
-        const usuariosRef = ref(database, "usuarios");
-        const [snapshot, usersSnapshot] = await Promise.all([
-          get(candidatosRef),
-          get(usuariosRef),
-        ]);
-        const users = usersSnapshot.exists() ? usersSnapshot.val() : {};
+        const candidatosQuery = isAdmin
+          ? candidatosRef
+          : query(
+              candidatosRef,
+              orderByChild("observerUid"),
+              equalTo(user.uid),
+            );
+        const snapshot = await get(candidatosQuery);
+        const data = snapshot.exists() ? snapshot.val() : {};
+        const rawCandidates = Object.entries(data).map(([key, candidate]) => ({
+          ...candidate,
+          candidateId: key,
+        }));
+        const observerUids = [
+          ...new Set(
+            rawCandidates.map((candidate) => candidate.observerUid).filter(Boolean),
+          ),
+        ];
+        const userSnapshots = await Promise.all(
+          observerUids.map((uid) => get(ref(database, `usuarios/${uid}`))),
+        );
+        const users = Object.fromEntries(
+          observerUids.map((uid, index) => [
+            uid,
+            userSnapshots[index].exists() ? userSnapshots[index].val() : null,
+          ]),
+        );
 
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          const lista = Object.keys(data).map((key) => {
-            const candidate = data[key];
-            return {
-              ...candidate,
-              observerName:
-                users[candidate.observerUid]?.name ||
-                candidate.observer ||
-                "Observador",
-            };
-          });
+        const lista = rawCandidates.map((candidate) => ({
+          ...candidate,
+          observerName:
+            users[candidate.observerUid]?.name ||
+            candidate.observer ||
+            "Observador",
+        }));
 
-          setCandidates(lista);
+        if (currentCheckId !== authCheckId) return;
+        setCandidates(lista);
 
-          // Extract observadores únicos registrados nos candidatos
-          const mapObservadores = new Map();
-          lista.forEach((item) => {
-            const id = item.observerUid || item.observer;
-            if (id && !mapObservadores.has(id)) {
-              mapObservadores.set(id, {
-                id: id,
-                name: item.observerName,
-              });
-            }
-          });
+        const mapObservadores = new Map();
+        lista.forEach((item) => {
+          const id = item.observerUid || item.observer;
+          if (id && !mapObservadores.has(id)) {
+            mapObservadores.set(id, {
+              id,
+              name: item.observerName,
+            });
+          }
+        });
 
-          const obsList = Array.from(mapObservadores.values());
-          setObserversList(obsList);
-          // Por padrão, seleciona todos os observadores
-          setSelectedObservers(obsList.map((o) => o.id));
-        }
+        const obsList = Array.from(mapObservadores.values());
+        setObserversList(obsList);
+        setSelectedObservers(obsList.map((observer) => observer.id));
       } catch (error) {
         console.error("Erro ao buscar dados para exportação:", error);
-        toast.error("Erro ao carregar dados do banco.");
+        if (currentCheckId === authCheckId) {
+          setCandidates([]);
+          setObserversList([]);
+          setSelectedObservers([]);
+          toast.error("Erro ao carregar dados do banco.");
+        }
       } finally {
-        setLoading(false);
+        if (currentCheckId === authCheckId) setLoading(false);
       }
-    };
+    });
 
-    fetchData();
+    return () => {
+      authCheckId += 1;
+      unsubscribeAuth();
+    };
   }, []);
 
   // Handler para marcar/desmarcar todos os observadores
@@ -110,8 +153,9 @@ export default function ExportarPage() {
         const obsId = item.observerUid || item.observer;
         const matchesObserver = selectedObservers.includes(obsId);
         const isEmptyMpc = item.quadrant === 0 || item.quadrant === "0";
-        const matchesMpcType =
-          !mpcType || (mpcType === "empty" ? isEmptyMpc : !isEmptyMpc);
+        const candidateMpcType =
+          item.mpcType || (isEmptyMpc ? "empty" : "moving");
+        const matchesMpcType = !mpcType || mpcType === candidateMpcType;
 
         let matchesDate = true;
         if (startDate && item.date < startDate) matchesDate = false;
@@ -317,7 +361,8 @@ export default function ExportarPage() {
             >
               <option value="">Todos</option>
               <option value="empty">MPC vazio</option>
-              <option value="moving">Com objeto em movimento</option>
+              <option value="moving">Novo candidato</option>
+              <option value="cataloged">Já catalogado</option>
             </select>
           </div>
 

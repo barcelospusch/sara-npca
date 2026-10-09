@@ -5,6 +5,7 @@ import {
   ArrowCounterClockwiseIcon,
   BackspaceIcon,
   ChartBarIcon,
+  ChartLineIcon,
   ExportIcon,
   PlusIcon,
   ShieldCheckIcon,
@@ -174,6 +175,13 @@ export default function Navbar() {
                 <>
                   {isAdmin && (
                     <>
+                      <Link
+                        href="/painel"
+                        className="btn secondary withicon"
+                      >
+                        <ChartLineIcon />
+                        <span>Painel</span>
+                      </Link>
                       <Link
                         href="/membros"
                         className="btn secondary withicon"

@@ -10,7 +10,8 @@ import toast from "react-hot-toast";
 export default function RegistrarCandidato() {
   const [set, setSet] = useState("");
   const [quadrant, setQuadrant] = useState("");
-  const [mpcWithoutMovingObject, setMpcWithoutMovingObject] = useState(null);
+  const [mpcType, setMpcType] = useState("");
+  const [catalogedCode, setCatalogedCode] = useState("");
   const [ps, setPs] = useState("PS1");
   const [mpcReport, setMpcReport] = useState("");
   const [observer, setObserver] = useState("");
@@ -57,7 +58,7 @@ export default function RegistrarCandidato() {
 
   // Reservas concorrentes dos códigos, iniciadas após a escolha do tipo MPC.
   useEffect(() => {
-    if (mpcWithoutMovingObject !== false || hasReservedRef.current) return;
+    if (mpcType !== "moving" || hasReservedRef.current) return;
     hasReservedRef.current = true;
 
     const reserveTempCode = async () => {
@@ -96,10 +97,10 @@ export default function RegistrarCandidato() {
     };
 
     reserveTempCode();
-  }, [mpcWithoutMovingObject]);
+  }, [mpcType]);
 
   useEffect(() => {
-    if (mpcWithoutMovingObject !== true || hasReservedXyzRef.current) return;
+    if (mpcType !== "empty" || hasReservedXyzRef.current) return;
     hasReservedXyzRef.current = true;
 
     const reserveXyzCode = async () => {
@@ -132,7 +133,7 @@ export default function RegistrarCandidato() {
     };
 
     reserveXyzCode();
-  }, [mpcWithoutMovingObject]);
+  }, [mpcType]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -141,16 +142,21 @@ export default function RegistrarCandidato() {
       return;
     }
 
-    if (mpcWithoutMovingObject === null) {
+    if (!mpcType) {
       toast.error("Selecione se há objetos em movimento no MPC Report.");
       return;
     }
 
-    const codeNumber = mpcWithoutMovingObject
-      ? assignedXyzNumber
-      : assignedNumber;
+    const isCataloged = mpcType === "cataloged";
+    const codeNumber = mpcType === "empty" ? assignedXyzNumber : assignedNumber;
+    const enteredCode = catalogedCode.trim();
 
-    if (!codeNumber) {
+    if (isCataloged && !enteredCode) {
+      toast.error("Informe o código do candidato já catalogado.");
+      return;
+    }
+
+    if (!isCataloged && !codeNumber) {
       toast.error("Aguarde a atribuição do código temporário.");
       return;
     }
@@ -159,35 +165,40 @@ export default function RegistrarCandidato() {
     const toastId = toast.loading("Registrando candidato...");
 
     try {
-      const codePrefix = mpcWithoutMovingObject ? "XYZ" : "NPC";
-      const formattedCode = `${codePrefix}${String(codeNumber).padStart(4, "0")}`;
+      const codePrefix = mpcType === "empty" ? "XYZ" : "NPC";
+      const formattedCode = isCataloged
+        ? enteredCode
+        : `${codePrefix}${String(codeNumber).padStart(4, "0")}`;
       const currentDate = new Date().toISOString().split("T")[0];
 
       const novoCandidato = {
         code: formattedCode,
+        mpcType,
         set: set,
         date: currentDate,
-        quadrant: mpcWithoutMovingObject ? 0 : quadrant,
+        quadrant: mpcType === "empty" ? 0 : quadrant,
         ps: ps,
         mpcReport: mpcReport,
         observerUid: observerUid,
         status: "Em análise",
       };
 
-      const novoCandidatoRef = mpcWithoutMovingObject
+      const novoCandidatoRef = mpcType === "empty" || isCataloged
         ? push(ref(database, "candidatos"))
         : ref(database, `candidatos/${formattedCode}`);
       await setDb(novoCandidatoRef, novoCandidato);
 
-      const lastCodeRef = ref(
-        database,
-        mpcWithoutMovingObject
-          ? "config/lastXyzCodeNumber"
-          : "config/lastCodeNumber",
-      );
-      await runTransaction(lastCodeRef, (currentLast) =>
-        codeNumber > (currentLast || 0) ? codeNumber : currentLast,
-      );
+      if (!isCataloged) {
+        const lastCodeRef = ref(
+          database,
+          mpcType === "empty"
+            ? "config/lastXyzCodeNumber"
+            : "config/lastCodeNumber",
+        );
+        await runTransaction(lastCodeRef, (currentLast) =>
+          codeNumber > (currentLast || 0) ? codeNumber : currentLast,
+        );
+      }
 
       toast.success(`Candidato ${formattedCode} registrado com sucesso!`, {
         id: toastId,
@@ -209,53 +220,90 @@ export default function RegistrarCandidato() {
         <h2>Registrar Candidato</h2>
 
         <div className="code-highlight-banner registrar-code" aria-live="polite">
-          <strong>
-            {mpcWithoutMovingObject === null
-              ? "Selecione o tipo de MPC"
-              : mpcWithoutMovingObject
-                ? `XYZ${String(assignedXyzNumber || "....").padStart(4, "0")}`
-                : nextCode}
-          </strong>
+          {mpcType === "cataloged" ? (
+            <>
+              <label htmlFor="cataloged-code">Código do candidato já catalogado</label>
+              <input
+                id="cataloged-code"
+                type="text"
+                form="registrar-candidate-form"
+                value={catalogedCode}
+                onChange={(event) => setCatalogedCode(event.target.value)}
+                className="login-input"
+                placeholder="Informe o código catalogado"
+                required
+              />
+            </>
+          ) : (
+            <strong>
+              {!mpcType
+                ? "Selecione o tipo de MPC"
+                : mpcType === "empty"
+                  ? `XYZ${String(assignedXyzNumber || "....").padStart(4, "0")}`
+                  : nextCode}
+            </strong>
+          )}
         </div>
 
-        <form onSubmit={handleRegister} className="login-form registrar-form">
+        <form
+          id="registrar-candidate-form"
+          onSubmit={handleRegister}
+          className="login-form registrar-form"
+        >
           <div className="input-group">
             <span className="label">MPC Report</span>
-            <div className="input-ratio">
+            <div className="input-ratio registrar-mpc-options">
               <label
                 htmlFor="mpc-without-moving-object"
-                className={`ratio-label ${mpcWithoutMovingObject ? "selected" : ""}`}
+                className={`ratio-label ${mpcType === "empty" ? "selected" : ""}`}
               >
                 <input
                   id="mpc-without-moving-object"
                   type="radio"
                   name="mpc-object-status"
                   value="empty"
-                  checked={mpcWithoutMovingObject === true}
+                  checked={mpcType === "empty"}
                   required
                   onChange={() => {
-                    setMpcWithoutMovingObject(true);
+                    setMpcType("empty");
                     setQuadrant("0");
                   }}
                 />
-                MPC Report vazio
+                MPC vazio
               </label>
               <label
                 htmlFor="mpc-with-moving-object"
-                  className={`ratio-label ${mpcWithoutMovingObject === false ? "selected" : ""}`}
+                className={`ratio-label ${mpcType === "moving" ? "selected" : ""}`}
               >
                 <input
                   id="mpc-with-moving-object"
                   type="radio"
                   name="mpc-object-status"
                   value="moving"
-                  checked={mpcWithoutMovingObject === false}
+                  checked={mpcType === "moving"}
                   onChange={() => {
-                    setMpcWithoutMovingObject(false);
+                    setMpcType("moving");
                     setQuadrant("");
                   }}
                 />
-                Com objeto em movimento
+                Novo candidato
+              </label>
+              <label
+                htmlFor="mpc-cataloged-object"
+                className={`ratio-label ${mpcType === "cataloged" ? "selected" : ""}`}
+              >
+                <input
+                  id="mpc-cataloged-object"
+                  type="radio"
+                  name="mpc-object-status"
+                  value="cataloged"
+                  checked={mpcType === "cataloged"}
+                  onChange={() => {
+                    setMpcType("cataloged");
+                    setQuadrant("");
+                  }}
+                />
+                Já catalogado
               </label>
             </div>
           </div>
@@ -280,8 +328,8 @@ export default function RegistrarCandidato() {
               type="text"
               value={quadrant}
               onChange={(e) => setQuadrant(e.target.value)}
-              required={!mpcWithoutMovingObject}
-              disabled={mpcWithoutMovingObject}
+              required={mpcType !== "empty"}
+              disabled={mpcType === "empty"}
               className="login-input"
             />
           </div>
@@ -344,8 +392,10 @@ export default function RegistrarCandidato() {
             disabled={
               loading ||
               !observerUid ||
-              mpcWithoutMovingObject === null ||
-              (mpcWithoutMovingObject ? !assignedXyzNumber : !assignedNumber)
+              !mpcType ||
+              (mpcType === "empty" && !assignedXyzNumber) ||
+              (mpcType === "moving" && !assignedNumber) ||
+              (mpcType === "cataloged" && !catalogedCode.trim())
             }
             className="btn login-submit-btn registrar-submit"
           >
